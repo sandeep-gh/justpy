@@ -28,7 +28,7 @@ print(f'Module directory: {current_dir}, Application directory: {os.getcwd()}')
 
 config = Config('justpy.env')
 DEBUG = config('DEBUG', cast=bool, default=True)
-CRASH = config('CRASH', cast=bool, default=False)
+CRASH = config('CRASH', cast=bool, default=True)
 MEMORY_DEBUG = config('MEMORY_DEBUG', cast=bool, default=False)
 if MEMORY_DEBUG:
     import psutil

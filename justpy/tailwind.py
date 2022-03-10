@@ -80,11 +80,36 @@ class Tailwind:
                               'whitespace-pre-wrap'],
                'word_break': ['break-normal', 'break-words', 'break-all', 'truncate'],
                'background_attachment': ['bg-fixed', 'bg-local', 'bg-scroll'],
-               'background_color': ['bg-transparent', 'bg-current', 'bg-black', 'bg-white', 'bg-gray-50','bg-gray-100',
+               'background_color': ['bg-transparent', 'bg-current', 'bg-black', 'bg-white', 'bg-gray-50', 'bg-gray-100',
                                     'bg-gray-200',
                                     'bg-gray-300', 'bg-gray-400', 'bg-gray-500', 'bg-gray-600', 'bg-gray-700',
-                                    'bg-gray-800',
-                                    'bg-gray-900', 'bg-red-100', 'bg-red-200', 'bg-red-300', 'bg-red-400', 'bg-red-500',
+                                    'bg-gray-800', 'bg-gray-900',
+                                    'bg-rose-50', 'bg-rose-100', 'bg-rose-200',
+                                    'bg-rose-300', 'bg-rose-400', 'bg-rose-500', 'bg-rose-600', 'bg-rose-700',
+                                    'bg-rose-800', 'bg-rose-900',
+                                    'bg-sky-50', 'bg-sky-100', 'bg-sky-200',
+                                    'bg-sky-300', 'bg-sky-400', 'bg-sky-500', 'bg-sky-600', 'bg-sky-700',
+                                    'bg-sky-800', 'bg-sky-900',
+                                    'bg-stone-50', 'bg-stone-100', 'bg-stone-200',
+                                    'bg-stone-300', 'bg-stone-400', 'bg-stone-500', 'bg-stone-600', 'bg-stone-700',
+                                    'bg-stone-800', 'bg-stone-900',
+                                    'bg-neutral-50', 'bg-neutral-100', 'bg-neutral-200',
+                                    'bg-neutral-300', 'bg-neutral-400', 'bg-neutral-500', 'bg-neutral-600', 'bg-neutral-700',
+                                    'bg-neutral-800', 'bg-neutral-900',
+                                                                        'bg-slate-50', 'bg-slate-100', 'bg-slate-200',
+                                    'bg-slate-300', 'bg-slate-400', 'bg-slate-500', 'bg-slate-600', 'bg-slate-700',
+                                    'bg-slate-800', 'bg-slate-900',
+                                                                        'bg-amber-50', 'bg-amber-100', 'bg-amber-200',
+                                    'bg-amber-300', 'bg-amber-400', 'bg-amber-500', 'bg-amber-600', 'bg-amber-700',
+                                    'bg-amber-800', 'bg-amber-900',
+                                    'bg-lime-50', 'bg-lime-100', 'bg-lime-200',
+                                    'bg-lime-300', 'bg-lime-400', 'bg-lime-500', 'bg-lime-600', 'bg-lime-700',
+                                    'bg-lime-800', 'bg-lime-900',
+                                    'bg-emerald-50', 'bg-emerald-100', 'bg-emerald-200',
+                                    'bg-emerald-300', 'bg-emerald-400', 'bg-emerald-500', 'bg-emerald-600', 'bg-emerald-700',
+                                    'bg-emerald-800', 'bg-emerald-900',
+
+                                    'bg-red-100', 'bg-red-200', 'bg-red-300', 'bg-red-400', 'bg-red-500',
                                     'bg-red-600', 'bg-red-700', 'bg-red-800', 'bg-red-900', 'bg-orange-100',
                                     'bg-orange-200', 'bg-orange-300', 'bg-orange-400', 'bg-orange-500', 'bg-orange-600',
                                     'bg-orange-700', 'bg-orange-800', 'bg-orange-900', 'bg-yellow-100', 'bg-yellow-200',
@@ -402,7 +427,8 @@ class Tailwind:
 
     def set_class(self, tw_class, modifier=''):
         if modifier and modifier not in Tailwind.pseudo_classes:
-            raise Exception(f'No Tailwind pseudo-class (modifier) named {modifier}')
+            raise Exception(
+                f'No Tailwind pseudo-class (modifier) named {modifier}')
         if tw_class not in Tailwind.tw_reverse_dict:
             raise Exception(f'No Tailwind class named {tw_class}')
         class_list = self.classes.split()
@@ -412,7 +438,8 @@ class Tailwind:
                     class_list.remove(i)
             class_list.append(tw_class)
         else:
-            tw_dict_modified = [f'{modifier}:' + i for i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]]
+            tw_dict_modified = [
+                f'{modifier}:' + i for i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]]
             tw_class_modified = f'{modifier}:{tw_class}'
             for i in class_list:
                 if i in tw_dict_modified:
@@ -429,5 +456,3 @@ class Tailwind:
                 self.set_class(c[1], c[0])
             else:
                 self.set_class(c[0])
-
-
