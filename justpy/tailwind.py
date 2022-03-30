@@ -71,7 +71,16 @@ class Tailwind:
                               'text-purple-600', 'text-purple-700', 'text-purple-800', 'text-purple-900',
                               'text-pink-100',
                               'text-pink-200', 'text-pink-300', 'text-pink-400', 'text-pink-500', 'text-pink-600',
-                              'text-pink-700', 'text-pink-800', 'text-pink-900'],
+                              'text-pink-700', 'text-pink-800', 'text-pink-900'
+
+                              'text-cyan-100',
+                              'text-cyan-200', 'text-cyan-300', 'text-cyan-400', 'text-cyan-500', 'text-cyan-600',
+                              'text-cyan-700', 'text-cyan-800', 'text-cyan-900',
+                              'text-sky-100',
+                              'text-sky-200', 'text-sky-300', 'text-sky-400', 'text-sky-500', 'text-sky-600',
+                              'text-sky-700', 'text-sky-800', 'text-sky-900'
+                              ],
+
                'text_decoration': ['underline', 'line-through', 'no-underline'],
                'text_transform': ['uppercase', 'lowercase', 'capitalize', 'normal-case'],
                'vertical_align': ['align-baseline', 'align-top', 'align-middle', 'align-bottom', 'align-text-top',
@@ -125,7 +134,22 @@ class Tailwind:
                                     'bg-purple-300', 'bg-purple-400', 'bg-purple-500', 'bg-purple-600', 'bg-purple-700',
                                     'bg-purple-800', 'bg-purple-900', 'bg-pink-100', 'bg-pink-200', 'bg-pink-300',
                                     'bg-pink-400', 'bg-pink-500', 'bg-pink-600', 'bg-pink-700', 'bg-pink-800',
-                                    'bg-pink-900'],
+                                    'bg-pink-900',
+
+                                    'bg-cyan-100',
+                                    'bg-cyan-200', 'bg-cyan-300', 'bg-cyan-400', 'bg-cyan-500', 'bg-cyan-600',
+                                    'bg-cyan-700', 'bg-cyan-800', 'bg-cyan-900',
+                                    'bg-sky-100',
+                                    'bg-sky-200', 'bg-sky-300', 'bg-sky-400', 'bg-sky-500', 'bg-sky-600',
+                                    'bg-sky-700', 'bg-sky-800', 'bg-sky-900',
+                                    'bg-fuchsia-100',
+                                    'bg-fuchsia-200', 'bg-fuchsia-300', 'bg-fuchsia-400', 'bg-fuchsia-500', 'bg-fuchsia-600',
+                                    'bg-fuchsia-700', 'bg-fuchsia-800', 'bg-fuchsia-900',
+                                    'bg-violet-100',
+                                    'bg-violet-200', 'bg-violet-300', 'bg-violet-400', 'bg-violet-500', 'bg-violet-600',
+                                    'bg-violet-700', 'bg-violet-800', 'bg-violet-900'
+
+                                    ],
                'background_position': ['bg-bottom', 'bg-center', 'bg-left', 'bg-left-bottom', 'bg-left-top', 'bg-right',
                                        'bg-right-bottom', 'bg-right-top', 'bg-top'],
                'background_repeat': ['bg-repeat', 'bg-no-repeat', 'bg-repeat-x', 'bg-repeat-y', 'bg-repeat-round',
