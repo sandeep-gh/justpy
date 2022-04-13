@@ -1,6 +1,10 @@
 from types import MethodType
 from addict import Dict
-import json, copy, inspect, sys, re
+import json
+import copy
+import inspect
+import sys
+import re
 from html.parser import HTMLParser, tagfind_tolerant, attrfind_tolerant
 from html.entities import name2codepoint
 from html import unescape
@@ -32,7 +36,8 @@ class JustPy:
 
 
 def register_component(component_class, tag, attributes=[]):
-    JustPy.component_registry[tag] = {'class': component_class, 'attributes': attributes}
+    JustPy.component_registry[tag] = {
+        'class': component_class, 'attributes': attributes}
 
 
 class Register:
@@ -59,8 +64,8 @@ class WebPage:
     highcharts_theme = None
     # One of ['avocado', 'dark-blue', 'dark-green', 'dark-unica', 'gray',
     # 'grid-light', 'grid', 'high-contrast-dark', 'high-contrast-light', 'sand-signika', 'skies', 'sunset']
-    allowed_events = ['click', 'visibilitychange', 'page_ready', 'result_ready', 'keydown', 'keyup', 'keypress']
-
+    allowed_events = ['click', 'visibilitychange', 'page_ready',
+                      'result_ready', 'keydown', 'keyup', 'keypress']
 
     def __init__(self, **kwargs):
         self.page_id = WebPage.next_page_id
@@ -84,7 +89,8 @@ class WebPage:
         self.body_classes = ''
         self.reload_interval = None
         self.events = []
-        self.dark = False  # Set to True for Quasar dark mode (use for other dark modes also)
+        # Set to True for Quasar dark mode (use for other dark modes also)
+        self.dark = False
         self.data = {}
         self.meadows = False
         WebPage.instances[self.page_id] = self
@@ -134,7 +140,8 @@ class WebPage:
         try:
             self.components.remove(component)
         except:
-            raise Exception('Component cannot be removed because it was not in Webpage')
+            raise Exception(
+                'Component cannot be removed because it was not in Webpage')
         return self
 
     def remove(self, component):
@@ -158,7 +165,8 @@ class WebPage:
             websocket_dict = WebPage.sockets[self.page_id]
         except:
             return self
-        dict_to_send = {'type': 'run_javascript', 'data': javascript_string, 'request_id': request_id, 'send': send}
+        dict_to_send = {'type': 'run_javascript',
+                        'data': javascript_string, 'request_id': request_id, 'send': send}
         await asyncio.gather(*[websocket.send_json(dict_to_send) for websocket in list(websocket_dict.values())],
                              return_exceptions=True)
         return self
@@ -246,6 +254,7 @@ class WebPage:
             raise Exception(f'No event of type {event_type} supported')
 
     async def run_event_function(self, event_type, event_data, create_namespace_flag=True):
+        print("event type = ", event_type)
         event_function = getattr(self, 'on_' + event_type)
         if create_namespace_flag:
             function_data = Dict(event_data)
@@ -261,11 +270,11 @@ class WebPage:
         if event not in self.allowed_events:
             self.allowed_events.append(event)
 
-    def write(self,md_text):
+    def write(self, md_text):
         assert _has_markdown, 'Markdown not installed'
         return Markdown(markdown=md_text, a=self, classes='m-2 p-2', all_extensions=True)
 
-    def equation(self,eq_text):
+    def equation(self, eq_text):
         return Equation(equation=eq_text, a=self, classes='m-2 p-2')
 
 
@@ -304,8 +313,6 @@ class MeadowsPage(WebPage):
             self.delete_components()
             del self.meadows_data
             self.remove_page()
-
-
 
 
 class JustpyBaseComponent(Tailwind):
@@ -375,9 +382,11 @@ class JustpyBaseComponent(Tailwind):
             if event_type not in self.events:
                 self.events.append(event_type)
             if debounce:
-                self.event_modifiers[event_type].debounce = {'value': debounce, 'timeout': None, 'immediate': immediate}
+                self.event_modifiers[event_type].debounce = {
+                    'value': debounce, 'timeout': None, 'immediate': immediate}
             elif throttle:
-                self.event_modifiers[event_type].throttle = {'value': throttle, 'timeout': None}
+                self.event_modifiers[event_type].throttle = {
+                    'value': throttle, 'timeout': None}
         else:
             raise Exception(f'No event of type {event_type} supported')
 
@@ -471,6 +480,7 @@ class JustpyBaseComponent(Tailwind):
 
     async def run_event_function(self, event_type, event_data, create_namespace_flag=True):
         event_function = getattr(self, 'on_' + event_type)
+        print("event type = ", event_type)
         if create_namespace_flag:
             function_data = Dict(event_data)
         else:
@@ -512,7 +522,8 @@ class HTMLBaseComponent(JustpyBaseComponent):
     #                               'itemid', 'itemprop', 'itemref', 'itemscope', 'itemtype']
 
     # Additions to global attributes to add to attrs dict apart from id and style.
-    used_global_attributes = ['contenteditable', 'dir', 'tabindex', 'title', 'accesskey', 'draggable', 'lang', 'spellcheck']
+    used_global_attributes = ['contenteditable', 'dir', 'tabindex',
+                              'title', 'accesskey', 'draggable', 'lang', 'spellcheck']
 
     # https://developer.mozilla.org/en-US/docs/Web/HTML/Element
 
@@ -536,7 +547,8 @@ class HTMLBaseComponent(JustpyBaseComponent):
         self.debug = False
         self.inner_html = ''
         self.animation = False
-        self.pages = {}  # Dictionary of pages the component is on. Not managed by framework.
+        # Dictionary of pages the component is on. Not managed by framework.
+        self.pages = {}
         self.show = True
         self.set_focus = False
         self.classes = ''
@@ -551,7 +563,8 @@ class HTMLBaseComponent(JustpyBaseComponent):
                                'dragstart', 'dragover', 'drop', 'click__out']
         self.events = []
         self.event_modifiers = Dict()
-        self.additional_properties = []  # Additional fields to get from the JavasScript event object
+        # Additional fields to get from the JavasScript event object
+        self.additional_properties = []
         self.event_propagation = True  # If True events are propagated
         self.prop_list = []  # For components from libraries like quasar
 
@@ -713,7 +726,8 @@ class Div(HTMLBaseComponent):
         try:
             self.components.remove(component)
         except:
-            raise Exception('Component cannot be removed because it is not contained in element')
+            raise Exception(
+                'Component cannot be removed because it is not contained in element')
         return self
 
     def remove(self, component):
@@ -818,7 +832,8 @@ class Input(Div):
         return f'{self.__class__.__name__}(id: {self.id}, html_tag: {self.html_tag}, input_type: {self.type}, vue_type: {self.vue_type}, value: {self.value}, checked: {self.checked}, number of components: {num_components})'
 
     def before_event_handler(self, msg):
-        logging.debug('%s %s %s %s %s', 'before ', self.type, msg.event_type, msg.input_type, msg)
+        logging.debug('%s %s %s %s %s', 'before ', self.type,
+                      msg.event_type, msg.input_type, msg)
         if msg.event_type not in ['input', 'change', 'select']:
             return
         if msg.input_type == 'checkbox':
@@ -877,16 +892,19 @@ class Input(Div):
         elif self.type == 'radio':
             model_value = update_value
             if self.form:
-                Input.radio_button_set_model_update(self, self.form, model_value)
+                Input.radio_button_set_model_update(
+                    self, self.form, model_value)
             else:
-                Input.radio_button_set_model_update(self, self.model[0], model_value)
+                Input.radio_button_set_model_update(
+                    self, self.model[0], model_value)
         else:
             self.value = update_value
 
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
         d['debounce'] = self.debounce
-        d['input_type'] = self.type  # Needed for vue component updated life hook and event handler
+        # Needed for vue component updated life hook and event handler
+        d['input_type'] = self.type
         if self.type in ['text', 'textarea']:
             d['value'] = str(self.value)
         else:
@@ -934,7 +952,8 @@ class InputChangeOnly(Input):
 class Form(Div):
 
     html_tag = 'form'
-    attributes = ['accept-charset', 'action', 'autocomplete', 'enctype', 'method', 'name', 'novalidate', 'target']
+    attributes = ['accept-charset', 'action', 'autocomplete',
+                  'enctype', 'method', 'name', 'novalidate', 'target']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -951,7 +970,8 @@ class Form(Div):
 class Label(Div):
 
     html_tag = 'label'
-    attributes = ['for', 'form']  # In JustPy these are components, not ids of component like in HTML
+    # In JustPy these are components, not ids of component like in HTML
+    attributes = ['for', 'form']
 
     def __init__(self, **kwargs):
         self.for_component = None
@@ -987,7 +1007,8 @@ class Textarea(Input):
 class Select(Input):
     # Need to set value of select on creation, otherwise blank line will show on page update
     html_tag = 'select'
-    attributes = ['autofocus', 'disabled', 'form', 'multiple', 'name', 'required', 'size']
+    attributes = ['autofocus', 'disabled', 'form',
+                  'multiple', 'name', 'required', 'size']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -997,7 +1018,8 @@ class Select(Input):
 class A(Div):
 
     html_tag = 'a'
-    attributes = ['download', 'href', 'hreflang', 'media', 'ping', 'rel', 'target', 'type']
+    attributes = ['download', 'href', 'hreflang',
+                  'media', 'ping', 'rel', 'target', 'type']
 
     def __init__(self, **kwargs):
 
@@ -1010,8 +1032,10 @@ class A(Div):
         # https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
         self.scroll = False  # If True, scrolling is enabled
         self.scroll_option = 'smooth'  # One of "auto" or "smooth".
-        self.block_option = 'start'  # One of "start", "center", "end", or "nearest". Defaults to "start".
-        self.inline_option = 'nearest'  # One of "start", "center", "end", or "nearest". Defaults to "nearest".
+        # One of "start", "center", "end", or "nearest". Defaults to "start".
+        self.block_option = 'start'
+        # One of "start", "center", "end", or "nearest". Defaults to "nearest".
+        self.inline_option = 'nearest'
         super().__init__(**kwargs)
 
         if not kwargs.get('click'):
@@ -1119,7 +1143,8 @@ class TabGroup(Div):
 
     def convert_object_to_dict(self):
         self.components = []
-        self.wrapper_div_classes = self.animation_speed  # Component in this will be centered
+        # Component in this will be centered
+        self.wrapper_div_classes = self.animation_speed
 
         if self.previous_value:
             self.wrapper_div = Div(classes=self.wrapper_div_classes, animation=self.animation_next, temp=True,
@@ -1133,7 +1158,8 @@ class TabGroup(Div):
                                    style=self.__class__.wrapper_style)
             self.wrapper_div.add(self.tabs[self.value]['tab'])
 
-        self.style = ' position: relative; overflow: hidden; ' + self.style  # overflow: hidden;
+        self.style = ' position: relative; overflow: hidden; ' + \
+            self.style  # overflow: hidden;
         d = super().convert_object_to_dict()
         return d
 
@@ -1149,7 +1175,8 @@ _tag_create_list = ['address', 'article', 'aside', 'footer', 'header', 'h1', 'h2
                     'embed', 'iframe', 'object', 'param', 'picture', 'source',
                     'del', 'ins', 'title',
                     'caption', 'col', 'colgroup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr',
-                    'button', 'fieldset', 'legend', 'meter', 'optgroup', 'option', 'progress',  # datalist not supported
+                    # datalist not supported
+                    'button', 'fieldset', 'legend', 'meter', 'optgroup', 'option', 'progress',
                     'details', 'summary', 'style'  # dialog not supported
                     ]
 
@@ -1449,13 +1476,16 @@ class BasicHTMLParser(HTMLParser):
         self.start_tag = True
         self.components = []
         self.name_dict = Dict()  # After parsing holds a dict with named components
-        self.dict_attribute = kwargs.get('dict_attribute', 'name')  # Use another attribute than name
+        # Use another attribute than name
+        self.dict_attribute = kwargs.get('dict_attribute', 'name')
         self.root = Div(name='root')
         self.containers = []
         self.containers.append(self.root)
         self.endtag_required = True
-        self.create_commands = kwargs.get('create_commands', True)  # If True, create the justpy command list
-        self.command_prefix = kwargs.get('command_prefix', 'jp.')  # Prefix for commands generated, defaults to 'jp.'
+        # If True, create the justpy command list
+        self.create_commands = kwargs.get('create_commands', True)
+        # Prefix for commands generated, defaults to 'jp.'
+        self.command_prefix = kwargs.get('command_prefix', 'jp.')
         if self.create_commands:
             # List of command strings (justpy python code to generate the element)
             self.commands = [f"root = {self.command_prefix}Div()"]
@@ -1502,7 +1532,7 @@ class BasicHTMLParser(HTMLParser):
             if "\n" in self.__starttag_text:
                 lineno = lineno + self.__starttag_text.count("\n")
                 offset = len(self.__starttag_text) \
-                         - self.__starttag_text.rfind("\n")
+                    - self.__starttag_text.rfind("\n")
             else:
                 offset = offset + len(self.__starttag_text)
             self.handle_data(rawdata[i:endpos])
@@ -1530,7 +1560,8 @@ class BasicHTMLParser(HTMLParser):
         c.parse_id = self.parse_id
         command_string = f''
         if c is None:
-            print(tag, 'No such tag, Div being used instead *****************************************')
+            print(
+                tag, 'No such tag, Div being used instead *****************************************')
             c = Div()
         for attr in attrs:
             attr = list(attr)
@@ -1545,7 +1576,8 @@ class BasicHTMLParser(HTMLParser):
                     if not c.id:
                         c.id = cls.next_id
                         cls.next_id += 1
-                    fn_string = f'def oneliner{c.id}(self, msg):\n {attr[1]}'  # remove first and last characters which are quotes
+                    # remove first and last characters which are quotes
+                    fn_string = f'def oneliner{c.id}(self, msg):\n {attr[1]}'
                     exec(fn_string)
                     c.on(attr[0][1:], locals()[f'oneliner{c.id}'])
                 continue
@@ -1596,7 +1628,6 @@ class BasicHTMLParser(HTMLParser):
             self.endtag_required = False
         else:
             self.endtag_required = True
-
 
     def handle_endtag(self, tag):
         c = self.containers.pop()
@@ -1692,8 +1723,8 @@ if _has_markdown:
     class Markdown(Div):
 
         all_markdown_extensions = ['extra', 'abbr', 'attr_list', 'def_list', 'fenced_code', 'footnotes', 'md_in_html',
-                               'tables', 'admonition', 'codehilite', 'legacy_attrs', 'legacy_em', 'meta', 'nl2br',
-                               'sane_lists', 'smarty', 'toc', 'wikilinks']
+                                   'tables', 'admonition', 'codehilite', 'legacy_attrs', 'legacy_em', 'meta', 'nl2br',
+                                   'sane_lists', 'smarty', 'toc', 'wikilinks']
 
         def __init__(self, **kwargs):
             self.markdown = ''
@@ -1712,7 +1743,8 @@ if _has_markdown:
             if self.all_extensions and not self.extensions:
                 self.extensions = self.all_markdown_extensions
             if self.markdown != self._cache:
-                d['inner_html'] = self._html_result = markdown.markdown(self.markdown, extensions=self.extensions)
+                d['inner_html'] = self._html_result = markdown.markdown(
+                    self.markdown, extensions=self.extensions)
                 self._cache = self.markdown
             else:
                 d['inner_html'] = self._html_result
