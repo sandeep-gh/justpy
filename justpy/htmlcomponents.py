@@ -13,7 +13,7 @@ import asyncio
 from .tailwind import Tailwind
 import logging
 import httpx
-
+from tailwind_tags import tstr
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
 
@@ -558,6 +558,8 @@ class HTMLBaseComponent(JustpyBaseComponent):
         self.directives = []
         self.data = {}
         self.drag_options = None
+        self.twsty_tags = kwargs.get('twsty_tags')
+        self.classes = tstr(*self.twsty_tags)
         self.allowed_events = ['click', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'input', 'change',
                                'after', 'before', 'keydown', 'keyup', 'keypress', 'focus', 'blur', 'submit',
                                'dragstart', 'dragover', 'drop', 'click__out']
