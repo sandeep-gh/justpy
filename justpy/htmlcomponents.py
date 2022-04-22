@@ -558,7 +558,9 @@ class HTMLBaseComponent(JustpyBaseComponent):
         self.directives = []
         self.data = {}
         self.drag_options = None
-        self.twsty_tags = kwargs.get('twsty_tags')
+        self.twsty_tags = kwargs.get('twsty_tags', [])
+        if not self.twsty_tags:
+            print(f"empty twsty_tags for {self.class_name}")
         self.classes = tstr(*self.twsty_tags)
         self.allowed_events = ['click', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'input', 'change',
                                'after', 'before', 'keydown', 'keyup', 'keypress', 'focus', 'blur', 'submit',
@@ -1424,8 +1426,9 @@ def component_by_tag(tag, attrs=[], **kwargs):
         tag_class_name = tag[0].capitalize() + tag[1:]
         try:
             c = globals()[tag_class_name](**kwargs)
-        except:
-            raise ValueError(f'Tag not defined: {tag}')
+        except Exception as e:
+            raise e
+            #raise ValueError(f'Tag not defined: {tag} {e}')
     return c
 
 
@@ -1480,7 +1483,9 @@ class BasicHTMLParser(HTMLParser):
         self.name_dict = Dict()  # After parsing holds a dict with named components
         # Use another attribute than name
         self.dict_attribute = kwargs.get('dict_attribute', 'name')
-        self.root = Div(name='root')
+        # TODO: maybe there is a better way. but Div is going to expect, twsty_tags
+        twsty_tags = kwargs.get('twsty_tags', [])
+        self.root = Div(name='root', twsty_tags=twsty_tags)
         self.containers = []
         self.containers.append(self.root)
         self.endtag_required = True
