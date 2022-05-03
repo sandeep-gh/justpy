@@ -19,6 +19,7 @@ from .pandas import *
 from .routing import Route, SetRoute
 from .utilities import run_task, create_delayed_task
 import uvicorn, logging, uuid, sys, os, traceback, fnmatch
+from addict import Dict
 from ssl import PROTOCOL_SSLv23
 
 current_module = sys.modules[__name__]
@@ -130,8 +131,42 @@ async def justpy_startup():
         print(f'JustPy ready to go on http://{HOST}:{PORT}')
 
 
+def build_response(func_to_run):
+    """
+    for testing/devel for svelte
+    """
+    func_parameters = len(inspect.signature(func_to_run).parameters)
+    assert func_parameters < 2, f"Function {func_to_run.__name__} cannot have more than one parameter"
+    load_page = func_to_run()
+    if isinstance(load_page, Response):
+        logging.debug('Returning raw starlette.responses.Response.')
+        return load_page
+    assert issubclass(type(load_page), WebPage), 'Function did not return a web page'
+    assert len(load_page) > 0 or load_page.html, '\u001b[47;1m\033[93mWeb page is empty, add components\033[0m'
+    page_options = {'reload_interval': load_page.reload_interval, 'body_style': load_page.body_style,
+                    'body_classes': load_page.body_classes, 'css': load_page.css, 'head_html': load_page.head_html, 'body_html': load_page.body_html,
+                    'display_url': load_page.display_url, 'dark': load_page.dark, 'title': load_page.title, 'redirect': load_page.redirect,
+                    'highcharts_theme': load_page.highcharts_theme, 'debug': load_page.debug, 'events': load_page.events,
+                    'favicon': load_page.favicon if load_page.favicon else FAVICON}
+    if load_page.use_cache:
+        page_dict = load_page.cache
+    else:
+        page_dict = load_page.build_list()
+    template_options['tailwind'] = load_page.tailwind
+    request =  Dict()
+    def url_for(*args, **kwargs):
+        return "url_for"
+    request.url_for = url_for
+    context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
+               'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
+               'html': load_page.html}
+    response = templates.TemplateResponse(load_page.template_file, context)
+    return response
+
+
 @app.route("/{path:path}")
 class Homepage(HTTPEndpoint):
+
 
     async def get(self, request):
         # Handle web requests
