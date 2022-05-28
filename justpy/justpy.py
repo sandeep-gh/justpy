@@ -22,6 +22,9 @@ import uvicorn, logging, uuid, sys, os, traceback, fnmatch
 from addict import Dict
 from ssl import PROTOCOL_SSLv23
 
+import jsbeautifier
+import json
+opts = jsbeautifier.default_options()
 current_module = sys.modules[__name__]
 current_dir = os.path.dirname(current_module.__file__)
 print(current_dir.replace('\\', '/'))
@@ -157,17 +160,25 @@ def build_response(func_to_run):
     def url_for(*args, **kwargs):
         return "url_for"
     request.url_for = url_for
+    logging.debug(f"the justpyComponents")
+
+    res = jsbeautifier.beautify(json.dumps(page_dict, default=str), opts)
+    
+    logging.debug(res)
+    logging.debug(f"done")
     context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
                'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
                'html': load_page.html}
+    logging.debug(f"using template file :{load_page.template_file}")
+    #if svelte template then do npm init; npm run build in background
+    #add bundle.js to the html file.
+    
     response = templates.TemplateResponse(load_page.template_file, context)
     return response
 
 
 @app.route("/{path:path}")
 class Homepage(HTTPEndpoint):
-
-
     async def get(self, request):
         # Handle web requests
         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
@@ -208,6 +219,8 @@ class Homepage(HTTPEndpoint):
             return load_page
         assert issubclass(type(load_page), WebPage), 'Function did not return a web page'
         assert len(load_page) > 0 or load_page.html, '\u001b[47;1m\033[93mWeb page is empty, add components\033[0m'
+
+        logging.debug(f"page_options.css = {load_page.css}")
         page_options = {'reload_interval': load_page.reload_interval, 'body_style': load_page.body_style,
                         'body_classes': load_page.body_classes, 'css': load_page.css, 'head_html': load_page.head_html, 'body_html': load_page.body_html,
                         'display_url': load_page.display_url, 'dark': load_page.dark, 'title': load_page.title, 'redirect': load_page.redirect,
@@ -221,6 +234,7 @@ class Homepage(HTTPEndpoint):
         context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
                    'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
                    'html': load_page.html}
+        logging.debug("using template file :{load_page.template_file}")
         response = templates.TemplateResponse(load_page.template_file, context)
         if SESSIONS and new_cookie:
             cookie_value = cookie_signer.sign(request.state.session_id)

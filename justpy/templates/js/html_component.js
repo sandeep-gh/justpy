@@ -156,6 +156,8 @@ Vue.component('html_component', {
                 }
 
             } else {
+              console.log("calling event handler");
+              console.log(event);
                 eventHandler(this.$props, event, false);
             }
         }),

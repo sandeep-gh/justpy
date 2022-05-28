@@ -4,6 +4,7 @@
 
     {% include 'favicon.html' %}
 
+    <link rel="stylesheet" href="/templates/js/svelte/build/bundle.css" />
     <style>
         {{ page_options.css | safe}}
     </style>
@@ -21,13 +22,14 @@
 {% else %}
     {{ page_options.body_html | safe }}
 
-<script src='/templates/js/public/build/bundle.js' type="text/javascript"></script>
+<script src='/templates/js/svelte/build/bundle.js' type="text/javascript"></script>
 
     <div id="components">
     </div>
 
     <script>
-        console.log('Using svelte framework ');
+      console.log('Using svelte framework ');
+        console.log(app);
     </script>
 
     {% include 'main_svelte.html' %}

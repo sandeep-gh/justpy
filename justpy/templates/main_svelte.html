@@ -288,13 +288,26 @@
                 dataType: 'json'
             });
         }, 1000 * {{ page_options.reload_interval }});
-    {% endif %}
-  var myapp= new svelteapp({
-         "target": document.getElementById("components"),
-         "props": {
-             name: 'Home',
-             justpyComponents: justpyComponents
-         }
-     })
+  {% endif %}
+
+   const allcomps = new app({
+     target: document.getElementById("components"),
+     props: {
+       name: "world",
+       atag: "span",
+       justpyComponents : justpyComponents
+     },
+   });
+
+
+
+  // var myapp= new svelteapp({
+  //        "target": document.getElementById("components"),
+  //        "props": {
+  //            name: 'Home',
+  //            justpyComponents: justpyComponents
+  //        }
+  //    })
   console.log("in svelte main");
+
 </script>
