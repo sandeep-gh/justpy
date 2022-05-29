@@ -231,6 +231,12 @@ class Homepage(HTTPEndpoint):
         else:
             page_dict = load_page.build_list()
         template_options['tailwind'] = load_page.tailwind
+        logging.debug(f"the justpyComponents")
+
+        res = jsbeautifier.beautify(json.dumps(page_dict, default=str), opts)
+    
+        logging.debug(res)
+        logging.debug(f"done")        
         context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
                    'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
                    'html': load_page.html}

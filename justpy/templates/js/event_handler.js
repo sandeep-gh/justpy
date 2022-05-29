@@ -80,8 +80,9 @@ function eventHandler(props, event, form_data, aux) {
     }
 
     let modifiers = props.jp_props.event_modifiers[event.type];
-
-    if (modifiers && modifiers.debounce) {
+  console.log("H1");
+  console.log(modifiers);
+  if (modifiers && modifiers.debounce) {
         let callNow = modifiers.debounce.immediate && !modifiers.debounce.timeout;
         clearTimeout(modifiers.debounce.timeout);
         let set_e = e;
@@ -109,6 +110,7 @@ function eventHandler(props, event, form_data, aux) {
             }
             , props.jp_props.debounce);
     } else {
+        console.log("calling send_to_server");
         send_to_server(e, 'event', props.jp_props.debug);
     }
 
@@ -127,6 +129,7 @@ function eventHandler(props, event, form_data, aux) {
 }
 
 function send_to_server(e, event_type, debug_flag) {
+  console.log("in send_to_server");
     if (debug_flag) {
         console.log('Sending message to server:');
         console.log({'type': event_type, 'event_data': e});
