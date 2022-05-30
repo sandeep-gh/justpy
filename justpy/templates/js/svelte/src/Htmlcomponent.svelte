@@ -5,23 +5,18 @@
   //align with event handler
   props['jp_props'] = jp_props;
   
-  let description_object = {
+  $:  description_object = {
     style: jp_props.style,
    
   };
   console.log("debug attrs");
-  for (const [key, value] of Object.entries(jp_props.attrs)) {
+  $: for (const [key, value] of Object.entries(jp_props.attrs)) {
     console.log(key, value);
     description_object[key] = value;
   }
-  //attrs: JSON.stringify(jp_props['attrs'])
-  console.log("style and attrs");
-  console.log(jp_props['style']);
-  console.log(JSON.stringify(jp_props['attrs']));  
-
   
-  if (jp_props.classes) {
-    description_object['class'] = jp_props.classes
+  $: if (jp_props.classes) {
+     description_object['class'] = jp_props.classes
   }
 
   
@@ -70,6 +65,10 @@
       
     }
   }
+  function btnclick(event){
+    console.log("btn clicked ");
+  }
+  
 </script>
 
 {#if jp_props.html_tag === "input"}
@@ -88,3 +87,4 @@
 
       </svelte:element>
     {/if}    
+<button on:click={btnclick}>id={jp_props.id}</button>
