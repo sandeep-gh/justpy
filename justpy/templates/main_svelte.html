@@ -294,7 +294,7 @@
         }, 1000 * {{ page_options.reload_interval }});
   {% endif %}
 
-   const allcomps = new app({
+   const allcomps = new app.App({
      target: document.getElementById("components"),
      props: {
        name: "world",
@@ -303,7 +303,13 @@
      },
    });
 
+  const achart = new app.Chart({
+     target: document.getElementById("components"),
+  });
 
+  //create a chartjs
+  //var Chart = require('chart.js');
+  //var myChart = new Chart(ctx, {...});
 
   // var myapp= new svelteapp({
   //        "target": document.getElementById("components"),
@@ -313,5 +319,6 @@
   //        }
   //    })
   console.log("in svelte main");
-
+  // console.log(app.Chart);
 </script>
+

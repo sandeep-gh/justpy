@@ -87,4 +87,3 @@
 
       </svelte:element>
     {/if}    
-<button on:click={btnclick}>id={jp_props.id}</button>
