@@ -1,6 +1,7 @@
 import { init, getLocaleFromNavigator } from "svelte-i18n";
 import App from "./App.svelte";
 import Chart from "./Chart.svelte";
+import Dummy from "./Dummy.svelte";
 import "./Tailwind.svelte";
 import "./i18n";
 

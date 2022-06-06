@@ -1,47 +1,48 @@
 <script>
   export let jp_props;
   export let props = {};
-
-  //align with event handler
+  import Dummy from "./Dummy.svelte";
+  import Chart from "./Chart.svelte";
+  let components = {
+                    'Dummy': Dummy,
+                    'ChartJS': Chart
+                   };
+  //event_handler.js requires props
   props['jp_props'] = jp_props;
   
   $:  description_object = {
     style: jp_props.style,
    
   };
-  console.log("debug attrs");
-  $: for (const [key, value] of Object.entries(jp_props.attrs)) {
-    console.log(key, value);
+  console.log("jp_props");
+  console.log(jp_props);
+  $: if ('attrs' in jp_props){
+   for (const [key, value] of Object.entries(jp_props.attrs)) {
     description_object[key] = value;
+  }
   }
   
   $: if (jp_props.classes) {
      description_object['class'] = jp_props.classes
   }
-
-  
   function dummyEventHandle(event){
-    console.log("from dummyeventhandle");
   }
   function clickEventHandle(event) {
-    // eventHandler(this.$props, event, false);
-    console.log("from handleClickEvent");
     eventHandler(props, event, false);
   }
   function inputEventHandle(event){
-    console.log("inputEventHandle called");
     eventHandler(props, event, false);
   }
   function changeEventHandle(event){
-    console.log("changeEventHandle called");
     eventHandler(props, event, false);
   }
+  //for events defined in python -- forward them to eventhandler
+  //else use dummyeventhandler
   let click_eh = dummyEventHandle;
   let change_eh = dummyEventHandle;
   let input_eh = dummyEventHandle;  
   if (jp_props.html_tag == 'input'){
     for (let i = 0; i < jp_props.events.length; i++) {
-      console.log("i can iterate");
       switch(jp_props.events[i]) {
       case "before":
         console.log("before event not implemented");
@@ -53,24 +54,20 @@
         change_eh = changeEventHandle;
         break;
       }
-      console.log(jp_props.events[i]);
     }
     
   }
   else{
     let click_eh = dummyEventHandle;
     if (jp_props.events.length > 0) {
-      console.log("assuming first event is a click event");
       click_eh = clickEventHandle;
       
     }
   }
-  function btnclick(event){
-    console.log("btn clicked ");
-  }
-  
 </script>
 
+{#if jp_props.vue_type === "html_component"}
+  <!-- svelte's syntax for input differs from other html components -->
 {#if jp_props.html_tag === "input"}
   <input  {...description_object} on:input={input_eh} on:change={change_eh}>
 {:else}
@@ -86,4 +83,9 @@
     {/each}
 
       </svelte:element>
-    {/if}    
+    {/if}
+
+{:else}
+  <!-- if component is not a html component; svelte syntax differs for html vs svelte component  -->
+  <svelte:component this={components[jp_props.vue_type]}  jp_props={jp_props}/>
+{/if}

@@ -1,28 +1,49 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, beforeUpdate } from "svelte";
   import { Chart, registerables } from 'chart.js';
   Chart.register(...registerables);
-  onMount(async () => {});
-  function renderChart() {
-    var ctx = document.getElementById("myChart").getContext("2d");
+  export let jp_props;
+  
+  let canvasID = "canvas_" + jp_props.chart_name;
+  let all_charts = {};
+  onMount(() => {
+    console.log("in Chart.onMount");
+    let canvasID = "canvas_" + jp_props.chart_name;
+    var ctx = document.getElementById(canvasID).getContext('2d');
     var chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: ["January", "February", "March", "April", "May", "June", "July"],
-        datasets: [
-          {
-            label: "My First dataset",
-            backgroundColor: "rgb(255, 99, 132)",
-            borderColor: "rgb(255, 99, 132)",
-            data: [0, 10, 5, 2, 20, 30, 45]
-          }
-        ]
-      },
-      options: {
-        target: document.getElementById("canvas"),
-      }
+      type: jp_props.chart_type,
+      data: jp_props.chart_data,
+      options: jp_props.chart_options
     });
+    all_charts[jp_props.chart_name] = chart;
   }
+  );
+  beforeUpdate(()=>{
+    if (all_charts[jp_props.chart_name] == null){
+      
+    }
+    else{
+      console.log("destroy and recreate chart");
+      all_charts[jp_props.chart_name].destroy();
+      let canvasID = "canvas_" + jp_props.chart_name;
+      let ctx = document.getElementById(canvasID).getContext('2d');
+      var chart = new Chart(ctx, {
+        type: jp_props.chart_type,
+        data: jp_props.chart_data,
+        options: jp_props.chart_options
+      });
+      all_charts[jp_props.chart_name] = chart;
+      
+    }
+    
+  });
 </script>
-<button on:click={renderChart}>Load</button>
-<canvas id="myChart"></canvas>
+
+<!-- unable to fix width and height for 0px -->
+<!-- <canvas id={canvasID} class={jp_props.classes} style={jp_props.style} width={jp_props.width} height={jp_props.height}/> -->
+
+<canvas id={canvasID} class={jp_props.classes} style={jp_props.style}/>
+
+
+
+

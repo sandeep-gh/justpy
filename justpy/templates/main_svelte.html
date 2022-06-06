@@ -294,6 +294,8 @@
         }, 1000 * {{ page_options.reload_interval }});
   {% endif %}
 
+  console.log("debug t45st");
+  console.log(justpyComponents);
    const allcomps = new app.App({
      target: document.getElementById("components"),
      props: {
@@ -303,9 +305,10 @@
      },
    });
 
-  const achart = new app.Chart({
-     target: document.getElementById("components"),
-  });
+  // const achart = new app.Chart({
+  //   target: document.getElementById("components"),
+  //   props:
+  // });
 
   //create a chartjs
   //var Chart = require('chart.js');
