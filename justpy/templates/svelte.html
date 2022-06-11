@@ -3,7 +3,7 @@
 <head>
 
     {% include 'favicon.html' %}
-
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/templates/js/svelte/build/bundle.css" />
     <style>
         {{ page_options.css | safe}}
@@ -15,7 +15,7 @@
 </head>
 
 
-<body class="" style="{{ page_options.body_style }}" class="{{ page_options.body_classes }}">
+<body style="{{ page_options.body_style }}" class="{{ page_options.body_classes }}">
   
 {% if html %}
     {{ html | safe }}

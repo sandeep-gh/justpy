@@ -1,19 +1,6 @@
-import { init, getLocaleFromNavigator } from "svelte-i18n";
-import App from "./App.svelte";
+import App from './App.svelte';
+import Htmlcomponent from './Htmlcomponents.svelte';
 import Chart from "./Chart.svelte";
-import Dummy from "./Dummy.svelte";
-import "./Tailwind.svelte";
-import "./i18n";
-
-const fallbackLocale = "en-US";
-const navigatorLocale = getLocaleFromNavigator();
-
-init({
-  fallbackLocale,
-  initialLocale: ["en-US", "fr-FR"].includes(navigatorLocale)
-    ? navigatorLocale
-    : fallbackLocale,
-});
 
 // var justpyComponents = [{
 //     "attrs": {},
@@ -84,13 +71,12 @@ init({
 
 
 // const app = new App({
-//   target: document.body,
-//   props: {
-//       name: "world",
-//     atag: "span",
-//     justpyComponents : justpyComponents
-//   },
+// 	target: document.body,
+// 	props: {
+// 	  name: 'world',
+//           justpyComponents : justpyComponents
+// 	}
 // });
 
-//export default App;
+// export default app;
 export {App, Chart};

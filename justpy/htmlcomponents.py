@@ -15,6 +15,7 @@ import logging
 import httpx
 from tailwind_tags import tstr
 # Dictionary for translating from tag to class
+import traceback
 _tag_class_dict = {}
 
 
@@ -254,7 +255,6 @@ class WebPage:
             raise Exception(f'No event of type {event_type} supported')
 
     async def run_event_function(self, event_type, event_data, create_namespace_flag=True):
-        print("event type = ", event_type)
         event_function = getattr(self, 'on_' + event_type)
         if create_namespace_flag:
             function_data = Dict(event_data)
@@ -480,7 +480,6 @@ class JustpyBaseComponent(Tailwind):
 
     async def run_event_function(self, event_type, event_data, create_namespace_flag=True):
         event_function = getattr(self, 'on_' + event_type)
-        print("event type = ", event_type)
         if create_namespace_flag:
             function_data = Dict(event_data)
         else:
