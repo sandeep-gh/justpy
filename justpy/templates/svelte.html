@@ -4,12 +4,21 @@
 
     {% include 'favicon.html' %}
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/templates/js/svelte/build/bundle.css" />
+    <!-- <link rel="stylesheet" href="/templates/js/svelte/build/bundle.css" /> -->
+    <!-- <script type="module" crossorigin src="/templates/js/svelte/assets/index.84cdc06b.js"></script> -->
+    <!-- <link rel="stylesheet" href="/templates/js/svelte/assets/index.521e4b17.css">
+      -->
+
+    <!-- <script type=module src="/templates/js/svelte/build/app.es.js"> </script> -->
+    <!-- <link rel="stylesheet" href="/templates/js/svelte/build/style.css" /> -->
+    <!-- <script type=module src="/templates/js/svelte/dist/app.es.js"> </script> -->
+    <!-- <script src = "/templates/js/svelte/dist/app.umd.js"> </script> -->
+    <script src="/templates/js/svelte/dist/bundle.iife.js"></script>
     <style>
         {{ page_options.css | safe}}
     </style>
 
-    {{ page_options.head_html | safe }}
+    <!-- {{ page_options.head_html | safe }} -->
 
 
 </head>
@@ -22,15 +31,22 @@
 {% else %}
     {{ page_options.body_html | safe }}
 
-<script src='/templates/js/svelte/build/bundle.js' type="text/javascript"></script>
+<!-- <script src='/templates/js/svelte/build/bundle.js' type="text/javascript"></script> -->
 
-    <div id="components">
+<div id="components">
+      <div class="container mx-auto flex justify-center">
+      <button value="9" class="bg-pink-100 text-gray-600 mr-1 mb-1 px-4 py-2 font-bold outline-none shadow shadow-sm rounded-md font-bold uppercase ease-linear transition-all duration-150 outline-none focus:outline-none hover:shadow-md hover:bg-gray-200 mx-1" style=""> <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" class="h-6 w-6" style=""> <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" style=""> </path></svg></button>
+    
+      </button>
+      </div>
+
     </div>
 
     <script>
       console.log('Using svelte framework ');
-        console.log(app);
+      console.log(jpComponentBuilder);
     </script>
     {% include 'main_svelte.html' %}
 
     {% endif %}
+

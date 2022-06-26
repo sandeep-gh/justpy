@@ -13,7 +13,6 @@ from .htmlcomponents import *
 from .chartcomponents import *
 from .gridcomponents import *
 from .quasarcomponents import *
-from .misccomponents import *
 from .meadows import *
 from .pandas import *
 from .routing import Route, SetRoute
@@ -94,6 +93,11 @@ logging.basicConfig(level=LOGGING_LEVEL, format='%(levelname)s %(module)s: %(mes
 app = Starlette(debug=DEBUG)
 app.mount(STATIC_ROUTE, StaticFiles(directory=STATIC_DIRECTORY), name=STATIC_NAME)
 app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name='templates')
+def url_for(name, **path_params):
+    url_path = Route.url_for(name, **path_params)
+    return url_path
+    #return url_path.make_absolute_url(base_url=self.base_url)
+
 app.add_middleware(GZipMiddleware)
 if SSL_KEYFILE and SSL_CERTFILE:
     app.add_middleware(HTTPSRedirectMiddleware)
@@ -175,6 +179,7 @@ def build_response(func_to_run):
     
     response = templates.TemplateResponse(load_page.template_file, context)
     return response
+
 
 
 @app.route("/{path:path}")

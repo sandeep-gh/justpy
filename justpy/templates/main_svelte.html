@@ -294,9 +294,9 @@
         }, 1000 * {{ page_options.reload_interval }});
   {% endif %}
 
-  console.log("debug t45st");
+
   console.log(justpyComponents);
-   const allcomps = new app.App({
+   const allcomps = new jpComponentBuilder.App({
      target: document.getElementById("components"),
      props: {
        name: "world",
