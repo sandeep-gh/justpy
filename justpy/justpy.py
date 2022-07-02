@@ -5,6 +5,7 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.endpoints import HTTPEndpoint
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.config import Config
@@ -89,16 +90,17 @@ template_options = {'tailwind': TAILWIND, 'quasar': QUASAR, 'quasar_version': QU
                     'katex': KATEX, 'plotly': PLOTLY, 'bokeh': BOKEH, 'deckgl': DECKGL, 'vega': VEGA}
 logging.basicConfig(level=LOGGING_LEVEL, format='%(levelname)s %(module)s: %(message)s')
 
-
 app = Starlette(debug=DEBUG)
 app.mount(STATIC_ROUTE, StaticFiles(directory=STATIC_DIRECTORY), name=STATIC_NAME)
 app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name='templates')
-def url_for(name, **path_params):
-    url_path = Route.url_for(name, **path_params)
-    return url_path
+# def url_for(name, **path_params):
+#     url_path = Route.url_for(name, **path_params)
+#     return url_path
     #return url_path.make_absolute_url(base_url=self.base_url)
 
-app.add_middleware(GZipMiddleware)
+app.add_middleware(GZipMiddleware) 
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
 if SSL_KEYFILE and SSL_CERTFILE:
     app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -127,6 +129,10 @@ async def justpy_startup():
     JustPy.loop = WebPage.loop
     JustPy.STATIC_DIRECTORY = STATIC_DIRECTORY
 
+    #introduce a content to store app-level information
+    #TODO: possibly use context var
+    #also teardown
+    app.ctx = Dict() 
     if startup_func:
         if inspect.iscoroutinefunction(startup_func):
             await startup_func()
@@ -180,12 +186,11 @@ def build_response(func_to_run):
     response = templates.TemplateResponse(load_page.template_file, context)
     return response
 
+# a wrapper that
 
-
-@app.route("/{path:path}")
-class Homepage(HTTPEndpoint):
-    async def get(self, request):
-        # Handle web requests
+def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app):
+    @router.route(pathglob, name = endpoint_name)
+    async def endpoint_handler(request):
         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if SESSIONS:
             new_cookie = False
@@ -202,11 +207,7 @@ class Homepage(HTTPEndpoint):
                 request.session_id = request.state.session_id
                 new_cookie = True
                 logging.debug(f'New session_id created: {request.session_id}')
-        for route in Route.instances:
-            func = route.matches(request['path'], request)
-            if func:
-                func_to_run = func
-                break
+        func_to_run = endpoint_func
         func_parameters = len(inspect.signature(func_to_run).parameters)
         assert func_parameters < 2, f"Function {func_to_run.__name__} cannot have more than one parameter"
         if inspect.iscoroutinefunction(func_to_run):
@@ -256,36 +257,113 @@ class Homepage(HTTPEndpoint):
         if LATENCY:
             await asyncio.sleep(LATENCY/1000)
         return response
+    
+# ==================== switched to CastAsEndpoint ====================
+# ====================== to enable url_for usage =====================
+#@app.route("/{path:path}")
+# class Homepage(HTTPEndpoint):
+#     async def get(self, request):
+#         # Handle web requests
+#         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
+#         if SESSIONS:
+#             new_cookie = False
+#             if session_cookie:
+#                 try:
+#                     session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
+#                 except:
+#                     return PlainTextResponse('Bad Session')
+#                 request.state.session_id = session_id
+#                 request.session_id = session_id
+#             else:
+#                 # Create new session_id
+#                 request.state.session_id = str(uuid.uuid4().hex)
+#                 request.session_id = request.state.session_id
+#                 new_cookie = True
+#                 logging.debug(f'New session_id created: {request.session_id}')
+#         for route in Route.instances:
+#             func = route.matches(request['path'], request)
+#             if func:
+#                 func_to_run = func
+#                 break
+#         func_parameters = len(inspect.signature(func_to_run).parameters)
+#         assert func_parameters < 2, f"Function {func_to_run.__name__} cannot have more than one parameter"
+#         if inspect.iscoroutinefunction(func_to_run):
+#             if func_parameters == 1:
+#                 load_page = await func_to_run(request)
+#             else:
+#                 load_page = await func_to_run()
+#         else:
+#             if func_parameters == 1:
+#                 load_page = func_to_run(request)
+#             else:
+#                 load_page = func_to_run()
+#         if isinstance(load_page, Response):
+#             logging.debug('Returning raw starlette.responses.Response.')
+#             return load_page
+#         assert issubclass(type(load_page), WebPage), 'Function did not return a web page'
+#         assert len(load_page) > 0 or load_page.html, '\u001b[47;1m\033[93mWeb page is empty, add components\033[0m'
 
-    async def post(self, request):
-        # Handles post method. Used in Ajax mode for events when websockets disabled
-        if request['path']=='/zzz_justpy_ajax':
-            data_dict = await request.json()
-            # {'type': 'event', 'event_data': {'event_type': 'beforeunload', 'page_id': 0}}
-            if data_dict['event_data']['event_type'] == 'beforeunload':
-                return await self.on_disconnect(data_dict['event_data']['page_id'])
+#         logging.debug(f"page_options.css = {load_page.css}")
+#         page_options = {'reload_interval': load_page.reload_interval, 'body_style': load_page.body_style,
+#                         'body_classes': load_page.body_classes, 'css': load_page.css, 'head_html': load_page.head_html, 'body_html': load_page.body_html,
+#                         'display_url': load_page.display_url, 'dark': load_page.dark, 'title': load_page.title, 'redirect': load_page.redirect,
+#                         'highcharts_theme': load_page.highcharts_theme, 'debug': load_page.debug, 'events': load_page.events,
+#                         'favicon': load_page.favicon if load_page.favicon else FAVICON}
+#         if load_page.use_cache:
+#             page_dict = load_page.cache
+#         else:
+#             page_dict = load_page.build_list()
+#         template_options['tailwind'] = load_page.tailwind
+#         logging.debug(f"the justpyComponents")
 
-            session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
-            if SESSIONS and session_cookie:
-                session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
-                data_dict['event_data']['session_id'] = session_id
+#         res = jsbeautifier.beautify(json.dumps(page_dict, default=str), opts)
+    
+#         logging.debug(res)
+#         logging.debug(f"done")        
+#         context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
+#                    'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
+#                    'html': load_page.html}
+#         logging.debug(f"using template file :{load_page.template_file}")
+#         response = templates.TemplateResponse(load_page.template_file, context)
+#         if SESSIONS and new_cookie:
+#             cookie_value = cookie_signer.sign(request.state.session_id)
+#             cookie_value = cookie_value.decode("utf-8")
+#             response.set_cookie(SESSION_COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
+#             for k, v in load_page.cookies.items():
+#                 response.set_cookie(k, v, max_age=COOKIE_MAX_AGE, httponly=True)
+#         if LATENCY:
+#             await asyncio.sleep(LATENCY/1000)
+#         return response
 
-            # data_dict['event_data']['session'] = request.session
-            msg_type = data_dict['type']
-            data_dict['event_data']['msg_type'] = msg_type
-            page_event = True if msg_type == 'page_event' else False
-            result = await handle_event(data_dict, com_type=1, page_event=page_event)
-            if result:
-                if LATENCY:
-                    await asyncio.sleep(LATENCY / 1000)
-                return JSONResponse(result)
-            else:
-                return JSONResponse(False)
+#     async def post(self, request):
+#         # Handles post method. Used in Ajax mode for events when websockets disabled
+#         if request['path']=='/zzz_justpy_ajax':
+#             data_dict = await request.json()
+#             # {'type': 'event', 'event_data': {'event_type': 'beforeunload', 'page_id': 0}}
+#             if data_dict['event_data']['event_type'] == 'beforeunload':
+#                 return await self.on_disconnect(data_dict['event_data']['page_id'])
 
-    async def on_disconnect(self, page_id):
-        logging.debug(f'In disconnect Homepage')
-        await WebPage.instances[page_id].on_disconnect()  # Run the specific page disconnect function
-        return JSONResponse(False)
+#             session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
+#             if SESSIONS and session_cookie:
+#                 session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
+#                 data_dict['event_data']['session_id'] = session_id
+
+#             # data_dict['event_data']['session'] = request.session
+#             msg_type = data_dict['type']
+#             data_dict['event_data']['msg_type'] = msg_type
+#             page_event = True if msg_type == 'page_event' else False
+#             result = await handle_event(data_dict, com_type=1, page_event=page_event)
+#             if result:
+#                 if LATENCY:
+#                     await asyncio.sleep(LATENCY / 1000)
+#                 return JSONResponse(result)
+#             else:
+#                 return JSONResponse(False)
+
+#     async def on_disconnect(self, page_id):
+#         logging.debug(f'In disconnect Homepage')
+#         await WebPage.instances[page_id].on_disconnect()  # Run the specific page disconnect function
+#         return JSONResponse(False)
 
 
 @app.websocket_route("/")
