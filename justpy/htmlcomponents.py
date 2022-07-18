@@ -1,5 +1,7 @@
 from types import MethodType
 from addict import Dict
+import collections
+
 import json
 import copy
 import inspect
@@ -672,7 +674,24 @@ class HTMLBaseComponent(JustpyBaseComponent):
         return d
 
 
-class Div(HTMLBaseComponent):
+class HCC(HTMLBaseComponent):
+    """
+    HCC: html component container
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.spathMap = Dict(track_changes=True)
+
+    def addItems(self, cgens):
+        collections.deque(map(lambda cgen: cgen(self), cgens), maxlen=0)
+        for stub in cgens:
+            self.spathMap[stub.spath] = stub.target
+    def getItem(self, stub):
+        return self.spathMap[stub.spath]
+
+    
+class Div(HCC):
     # A general purpose container
     # This is a component that other components can be added to
 

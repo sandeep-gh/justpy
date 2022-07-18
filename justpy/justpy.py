@@ -6,6 +6,11 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.authentication import (
+    AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser
+)
+
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.config import Config
@@ -90,7 +95,33 @@ template_options = {'tailwind': TAILWIND, 'quasar': QUASAR, 'quasar_version': QU
                     'katex': KATEX, 'plotly': PLOTLY, 'bokeh': BOKEH, 'deckgl': DECKGL, 'vega': VEGA}
 logging.basicConfig(level=LOGGING_LEVEL, format='%(levelname)s %(module)s: %(message)s')
 
-app = Starlette(debug=DEBUG)
+class BasicAuthBackend(AuthenticationBackend):
+    async def authenticate(self, conn):
+        if "Authorization" not in conn.headers:
+            return
+        auth = conn.headers["Authorization"]
+        try:
+            scheme, credentials = auth.split()
+            if scheme.lower() != 'basic':
+                return
+            decoded = base64.b64decode(credentials).decode("ascii")
+        except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+            raise AuthenticationError('Invalid basic auth credentials')
+
+        return #don't authenticate anyone.
+
+
+middleware = [
+#    Middleware(HTTPSRedirectMiddleware),
+    Middleware(GZipMiddleware),
+    Middleware(SessionMiddleware, secret_key=SECRET_KEY),
+    Middleware(AuthenticationMiddleware,
+               backend=BasicAuthBackend(),
+               on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401)
+               )
+]
+    
+app = Starlette(debug=DEBUG, middleware=middleware)
 app.mount(STATIC_ROUTE, StaticFiles(directory=STATIC_DIRECTORY), name=STATIC_NAME)
 app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name='templates')
 # def url_for(name, **path_params):
@@ -98,11 +129,11 @@ app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name=
 #     return url_path
     #return url_path.make_absolute_url(base_url=self.base_url)
 
-app.add_middleware(GZipMiddleware) 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# app.add_middleware(GZipMiddleware) 
+# app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-if SSL_KEYFILE and SSL_CERTFILE:
-    app.add_middleware(HTTPSRedirectMiddleware)
+# if SSL_KEYFILE and SSL_CERTFILE:
+#     app.add_middleware(HTTPSRedirectMiddleware)
 
 
 def initial_func(request):
@@ -166,6 +197,7 @@ def build_response(func_to_run):
     else:
         page_dict = load_page.build_list()
     template_options['tailwind'] = load_page.tailwind
+    print ("template_options = ", load_page.tailwind)
     request =  Dict()
     def url_for(*args, **kwargs):
         return "url_for"
@@ -227,8 +259,11 @@ def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app):
         assert len(load_page) > 0 or load_page.html, '\u001b[47;1m\033[93mWeb page is empty, add components\033[0m'
 
         logging.debug(f"page_options.css = {load_page.css}")
-        page_options = {'reload_interval': load_page.reload_interval, 'body_style': load_page.body_style,
-                        'body_classes': load_page.body_classes, 'css': load_page.css, 'head_html': load_page.head_html, 'body_html': load_page.body_html,
+        page_options = {'reload_interval': load_page.reload_interval,
+                        'body_style': load_page.body_style,
+                        'body_classes': load_page.body_classes,
+                        'css': load_page.css,
+                        'head_html': load_page.head_html, 'body_html': load_page.body_html,
                         'display_url': load_page.display_url, 'dark': load_page.dark, 'title': load_page.title, 'redirect': load_page.redirect,
                         'highcharts_theme': load_page.highcharts_theme, 'debug': load_page.debug, 'events': load_page.events,
                         'favicon': load_page.favicon if load_page.favicon else FAVICON}
@@ -237,15 +272,15 @@ def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app):
         else:
             page_dict = load_page.build_list()
         template_options['tailwind'] = load_page.tailwind
+        print ("template_options = ", load_page.tailwind)
         logging.debug(f"the justpyComponents")
-
         res = jsbeautifier.beautify(json.dumps(page_dict, default=str), opts)
-    
         logging.debug(res)
         logging.debug(f"done")        
         context = {'request': request, 'page_id': load_page.page_id, 'justpy_dict': json.dumps(page_dict, default=str),
                    'use_websockets': json.dumps(WebPage.use_websockets), 'options': template_options, 'page_options': page_options,
                    'html': load_page.html}
+        
         logging.debug(f"using template file :{load_page.template_file}")
         response = templates.TemplateResponse(load_page.template_file, context)
         if SESSIONS and new_cookie:
