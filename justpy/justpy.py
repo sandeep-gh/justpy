@@ -306,13 +306,16 @@ def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app, scopes=No
     #router.routes.append(Route(pathglob, endpoint_handler, name = endpoint_name))
 
     if scopes:
+        # e.g scopes = ['authenticated']
+        # adds a wrapper around endpoint_handler to check that user has all the scopes
+        # wrapper create from requires function of starlette/authentication.py
         decorator = requires(scopes)
         pre_authenticate =  decorator(endpoint_handler)
         router.add_route(pathglob, pre_authenticate, name = endpoint_name)
     else:
         router.add_route(pathglob, endpoint_handler, name = endpoint_name)
     return
-    
+     
 # ==================== switched to CastAsEndpoint ====================
 # ====================== to enable url_for usage =====================
 #@app.route("/{path:path}")
