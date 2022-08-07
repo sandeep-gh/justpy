@@ -3,14 +3,16 @@ from starlette.responses import JSONResponse, Response
 from starlette.responses import PlainTextResponse
 from starlette.endpoints import WebSocketEndpoint
 from starlette.endpoints import HTTPEndpoint
+from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.authentication import (
-    AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser
+    AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires
 )
-
+import binascii
+import base64
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.config import Config
@@ -97,6 +99,8 @@ logging.basicConfig(level=LOGGING_LEVEL, format='%(levelname)s %(module)s: %(mes
 
 class BasicAuthBackend(AuthenticationBackend):
     async def authenticate(self, conn):
+        print ("Auth backend called")
+        print (conn.headers)
         if "Authorization" not in conn.headers:
             return
         auth = conn.headers["Authorization"]
@@ -107,21 +111,21 @@ class BasicAuthBackend(AuthenticationBackend):
             decoded = base64.b64decode(credentials).decode("ascii")
         except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
             raise AuthenticationError('Invalid basic auth credentials')
-
-        return #don't authenticate anyone.
+        print ("decoded ", decoded)
+        return AuthCredentials(["authenticated"]), SimpleUser("user")
 
 
 middleware = [
 #    Middleware(HTTPSRedirectMiddleware),
-    Middleware(GZipMiddleware),
-    Middleware(SessionMiddleware, secret_key=SECRET_KEY),
-    Middleware(AuthenticationMiddleware,
-               backend=BasicAuthBackend(),
-               on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401)
-               )
+    #Middleware(GZipMiddleware)
+    #Middleware(SessionMiddleware, secret_key=SECRET_KEY),
+    # Middleware(AuthenticationMiddleware,
+    #            backend=BasicAuthBackend(),
+    #            on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401)
+    #            )
 ]
     
-app = Starlette(debug=DEBUG, middleware=middleware)
+app = Starlette(debug=DEBUG)
 app.mount(STATIC_ROUTE, StaticFiles(directory=STATIC_DIRECTORY), name=STATIC_NAME)
 app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name='templates')
 # def url_for(name, **path_params):
@@ -129,12 +133,15 @@ app.mount('/templates', StaticFiles(directory=current_dir + '/templates'), name=
 #     return url_path
     #return url_path.make_absolute_url(base_url=self.base_url)
 
-# app.add_middleware(GZipMiddleware) 
-# app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(GZipMiddleware) 
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# if SSL_KEYFILE and SSL_CERTFILE:
-#     app.add_middleware(HTTPSRedirectMiddleware)
-
+if SSL_KEYFILE and SSL_CERTFILE:
+    app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(AuthenticationMiddleware,
+                backend=BasicAuthBackend(),
+                on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401)
+                   )
 
 def initial_func(request):
     wp = WebPage()
@@ -220,8 +227,11 @@ def build_response(func_to_run):
 
 # a wrapper that
 
-def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app):
-    @router.route(pathglob, name = endpoint_name)
+def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app, scopes=None):
+    """
+    scopes is required for authentication
+    """
+    #@router.route(pathglob, name = endpoint_name)
     async def endpoint_handler(request):
         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if SESSIONS:
@@ -292,6 +302,16 @@ def CastAsEndpoint(endpoint_func, pathglob, endpoint_name, router=app):
         if LATENCY:
             await asyncio.sleep(LATENCY/1000)
         return response
+
+    #router.routes.append(Route(pathglob, endpoint_handler, name = endpoint_name))
+
+    if scopes:
+        decorator = requires(scopes)
+        pre_authenticate =  decorator(endpoint_handler)
+        router.add_route(pathglob, pre_authenticate, name = endpoint_name)
+    else:
+        router.add_route(pathglob, endpoint_handler, name = endpoint_name)
+    return
     
 # ==================== switched to CastAsEndpoint ====================
 # ====================== to enable url_for usage =====================
