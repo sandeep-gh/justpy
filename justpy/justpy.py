@@ -85,9 +85,11 @@ HTML_404_PAGE = "justpy is sorry - that path doesn't exist"
 def create_component_file_list():
     file_list = []
     component_dir = os.path.join(STATIC_DIRECTORY, "components")
+    print ("component_dir = ", component_dir)
     if os.path.isdir(component_dir):
         for file in os.listdir(component_dir):
             if fnmatch.fnmatch(file, "*.js"):
+                print ("append file = ", file)
                 file_list.append(f"/components/{file}")
     return file_list
 
