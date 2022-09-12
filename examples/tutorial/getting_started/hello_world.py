@@ -9,6 +9,11 @@ def hello_world():
 
 
 # initialize the demo
-from examples.basedemo import Demo
+# from examples.basedemo import Demo
 
-Demo("hello_world", hello_world)
+# Demo("hello_world", hello_world)
+jp.Route("/", hello_world)
+from starlette.testclient import TestClient
+app = jp.app
+client = TestClient(app)
+response = client.get('/') 
