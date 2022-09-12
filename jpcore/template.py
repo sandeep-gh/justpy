@@ -68,6 +68,7 @@ class Context:
         html+=self.as_javascript_constructor(indent+"  ")
         html+=f"\n{indent}</script>\n{self.as_script_srcs(indent)}"
         #html+=f"{indent}<script>\n{self.as_javascript_setup(indent)}\n{indent}</script>\n"
+        print ("returning as_html_lines = ", html)
         return html
     
     def as_script_src(self,file_name:str,indent:str="  "):
