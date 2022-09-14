@@ -59,7 +59,7 @@ class Context:
         """
         generate the html lines for justpy to work 
         """
-        html="" #self.as_script_src("justpy_core")
+        html=self.as_script_src("justpy_core")
         html+=f"""{indent}<script>
 {indent}  var page_id = {self.page_id_js};
 {indent}  var use_websockets = {self.use_websockets_js};
@@ -67,8 +67,7 @@ class Context:
 """
         html+=self.as_javascript_constructor(indent+"  ")
         html+=f"\n{indent}</script>\n{self.as_script_srcs(indent)}"
-        #html+=f"{indent}<script>\n{self.as_javascript_setup(indent)}\n{indent}</script>\n"
-        print ("returning as_html_lines = ", html)
+        html+=f"{indent}<script>\n{self.as_javascript_setup(indent)}\n{indent}</script>\n"
         return html
     
     def as_script_src(self,file_name:str,indent:str="  "):
@@ -104,22 +103,21 @@ class Context:
         static_resources_url = self.get_url_for("static")
         if static_resources_url is None:
             static_resources_url = "/"
-        javascript = ""    
-        # javascript = f"""let justpy_core=new JustpyCore(
-        #     this, // window
-        #     {self.page_id_js}, // page_id
-        #     '{self.title_js}', // title
-        #     '{self.use_websockets_js}', // use_websockets
-        #     '{self.redirect_js}', // redirect
-        #     '{self.display_url_js}', // display_url
-        #     {page_ready}, // page_ready
-        #     {result_ready}, // result_ready     
-        #     {reload_interval_ms}, // reload_interval
-        #     {self.page_options.events},  // events
-        #     '{static_resources_url}',  // static_resources_url
-        #     {debug}   // debug
-        # );"""
-        # javascript = textwrap.indent(javascript, indent)
+        javascript = f"""let justpy_core=new JustpyCore(
+            this, // window
+            {self.page_id_js}, // page_id
+            '{self.title_js}', // title
+            '{self.use_websockets_js}', // use_websockets
+            '{self.redirect_js}', // redirect
+            '{self.display_url_js}', // display_url
+            {page_ready}, // page_ready
+            {result_ready}, // result_ready     
+            {reload_interval_ms}, // reload_interval
+            {self.page_options.events},  // events
+            '{static_resources_url}',  // static_resources_url
+            {debug}   // debug
+        );"""
+        javascript = textwrap.indent(javascript, indent)
         return javascript
 
 

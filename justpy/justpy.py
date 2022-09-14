@@ -114,7 +114,7 @@ template_options = {
     "deckgl": DECKGL,
     "vega": VEGA,
 }
-logging.basicConfig(level=LOGGING_LEVEL, format="%(levelname)s %(module)s: %(message)s")
+#logging.basicConfig(level=LOGGING_LEVEL, format="%(levelname)s %(module)s: %(message)s")
 
 # modify middleware handling according to deprecation
 # https://github.com/encode/starlette/discussions/1762

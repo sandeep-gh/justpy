@@ -28,7 +28,7 @@ def parse_dict(cls):
 
 class JustPy:
     loop = None
-    LOGGING_LEVEL = logging.DEBUG
+    #LOGGING_LEVEL = logging.DEBUG
     component_registry = {}
     # Meadows
     meadows = False
