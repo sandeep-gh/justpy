@@ -109,6 +109,11 @@ class JustpyBaseComponent(Component):
         self.events = []
         self.event_modifiers = Dict()
         self.transition = None
+        self.twsty_tags = kwargs.get('twsty_tags', [])
+        if not self.twsty_tags:
+            logging.debug(f"empty twsty_tags for {self.class_name}")
+        else:
+            self.classes = tstr(*self.twsty_tags)
         self.allowed_events = []
 
     def initialize(self, **kwargs):
@@ -520,7 +525,33 @@ class HTMLBaseComponent(JustpyBaseComponent):
         return d
 
 
-class Div(HTMLBaseComponent):
+    
+
+class HCC(HTMLBaseComponent):
+    """
+    HCC: html component container
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.spathMap = Dict(track_changes=True)
+
+    def addItems(self, cgens):
+        """
+        add htmlcomponents in cgens as child of this-HCC component 
+        """
+        # generate child components; make this HCC as parent 
+        collections.deque(map(lambda cgen: cgen(self), cgens), maxlen=0)
+        for stub in cgens:
+            self.spathMap[stub.spath] = stub.target
+    def getItem(self, stub):
+        """
+        return htmlcomponent object generated from stub
+        """
+        return self.spathMap[stub.spath]
+    
+    
+class Div(HCC):
     # A general purpose container
     # This is a component that other components can be added to
 
