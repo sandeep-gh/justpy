@@ -1,3 +1,4 @@
+import collections
 from types import MethodType
 from addict import Dict
 import json, copy, inspect, sys, re
@@ -12,7 +13,7 @@ import httpx
 from jpcore.template import PageOptions
 from jpcore.component import Component
 from jpcore.webpage import WebPage as BaseWebPage
-
+from tailwind_tags import tstr
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
 
@@ -110,10 +111,9 @@ class JustpyBaseComponent(Component):
         self.event_modifiers = Dict()
         self.transition = None
         self.twsty_tags = kwargs.get('twsty_tags', [])
+
         if not self.twsty_tags:
             logging.debug(f"empty twsty_tags for {self.class_name}")
-        else:
-            self.classes = tstr(*self.twsty_tags)
         self.allowed_events = []
 
     def initialize(self, **kwargs):
@@ -386,7 +386,11 @@ class HTMLBaseComponent(JustpyBaseComponent):
         )  # Dictionary of pages the component is on. Not managed by framework.
         self.show = True
         self.set_focus = False
+                    
         self.classes = ""
+        if self.twsty_tags:
+            self.classes = tstr(*self.twsty_tags)
+
         self.slot = None
         self.scoped_slots = {}  # For Quasar and other Vue.js based components
         self.style = ""
