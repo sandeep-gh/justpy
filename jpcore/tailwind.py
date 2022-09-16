@@ -1834,35 +1834,39 @@ class Tailwind:
 
     tw_reverse_dict = create_reverse_dict.__func__(tw_dict)
 
-    def set_class(self, tw_class, modifier=""):
-        if modifier and modifier not in Tailwind.pseudo_classes:
-            raise Exception(f"No Tailwind pseudo-class (modifier) named {modifier}")
-        if tw_class not in Tailwind.tw_reverse_dict:
-            raise Exception(f"No Tailwind class named {tw_class}")
-        class_list = self.classes.split()
-        if not modifier:
-            for i in class_list:
-                if i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]:
-                    class_list.remove(i)
-            class_list.append(tw_class)
-        else:
-            tw_dict_modified = [
-                f"{modifier}:" + i
-                for i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]
-            ]
-            tw_class_modified = f"{modifier}:{tw_class}"
-            for i in class_list:
-                if i in tw_dict_modified:
-                    class_list.remove(i)
-            class_list.append(tw_class_modified)
-        self.classes = " ".join(class_list)
-        return self.classes
+    # def set_class(self, tw_class, modifier=""):
+    #     # if modifier and modifier not in Tailwind.pseudo_classes:
+    #     #     raise Exception(f"No Tailwind pseudo-class (modifier) named {modifier}")
+    #     # if tw_class not in Tailwind.tw_reverse_dict:
+    #     #     raise Exception(f"No Tailwind class named {tw_class}")
+    #     raise ValueError("This is no longer allowed")
+    #     class_list = self.classes.split()
+    #     # if not modifier:
+    #     #     for i in class_list:
+    #     #         if i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]:
+    #     #             class_list.remove(i)
+    #     if modifier == "":
+    #         class_list.append(tw_class)
+    #     else:
+    #         tw_class_modified = f"{modifier}:{tw_class}"
+    #         class_list.append(tw_class_modified)
+    #     # else:
+    #     #     tw_dict_modified = [
+    #     #         f"{modifier}:" + i
+    #     #         for i in Tailwind.tw_dict[Tailwind.tw_reverse_dict[tw_class]]
+    #     #     ]
 
-    def set_classes(self, class_list):
-        # Takes a string of tailwind classes and sets them all
-        for c in class_list.split():
-            c = c.split(":")
-            if len(c) > 1:
-                self.set_class(c[1], c[0])
-            else:
-                self.set_class(c[0])
+    #         # for i in class_list:
+    #         #     if i in tw_dict_modified:
+    #         #         class_list.remove(i)
+    #     self.classes = " ".join(class_list)
+    #     return self.classes
+
+    # def set_classes(self, class_list):
+    #     # Takes a string of tailwind classes and sets them all
+    #     for c in class_list.split():
+    #         c = c.split(":")
+    #         if len(c) > 1:
+    #             self.set_class(c[1], c[0])
+    #         else:
+    #             self.set_class(c[0])

@@ -25,6 +25,9 @@ from starlette.routing import Route
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import HTMLResponse, JSONResponse,PlainTextResponse, Response
 from starlette.templating import Jinja2Templates
+from starlette.authentication import (
+    requires as auth_requires
+)
 
 from jpcore.component import Component
 from jpcore.justpy_config import config, AGGRID, AGGRID_ENTERPRISE,BOKEH,COOKIE_MAX_AGE, CRASH
@@ -60,7 +63,7 @@ FRONTEND_ENGINE_LIBS = [fn[:-3]
                         for fn in os.listdir(lib_dir)
                         if fnmatch.fnmatch(fn, "*.js")
                         ]
-
+print (FRONTEND_ENGINE_LIBS)
 TEMPLATES_DIRECTORY = config(
     "TEMPLATES_DIRECTORY", cast=str, default=template_dir
 )
@@ -207,7 +210,9 @@ class JustpyApp(Starlette):
         if isinstance(route,Route):
             text+=f"func: {route.endpoint.__name__}"
         return text
+
     
+            
     def add_jproute(self,path:str,wpfunc:typing.Callable,name:str=None):
         """
         add a route for the given Webpage returning func
@@ -221,10 +226,19 @@ class JustpyApp(Starlette):
         if name is None:
             name=wpfunc.__name__
         self.router.add_route(path,endpoint,name=name,include_in_schema=False)
+
+    def requires(self, scopes, status_code=403, redirect=None):
+        auth_decorator = auth_requires(scopes, status_code, redirect)
+        def wrapper(func):
+            
+            return auth_decorator(func)
+        return wrapper
     
     def jproute(self,
-        path: str,
-        name: typing.Optional[str] = None)-> typing.Callable:  # pragma: nocover
+                path: str,
+                name: typing.Optional[str] = None,
+                methods = ['GET']
+                )-> typing.Callable:  # pragma: nocover
         """ 
         justpy route decorator
         
@@ -245,11 +259,13 @@ class JustpyApp(Starlette):
                 Callable: an endpoint that has been routed
             
             """
+            print("building starlette endpoint and adding to starlette router")
             endpoint=self.response(func)
             self.router.add_route(
                 path,
                 endpoint,
                 name=name if name is not None else func.__name__,
+                methods=methods,
                 include_in_schema=False,
             )
             self.route(path)
@@ -306,15 +322,15 @@ class JustpyApp(Starlette):
         # in scope here (anymore) anyways
         func_to_run = func
         func_parameters = len(inspect.signature(func_to_run).parameters)
-        assert (func_parameters < 2), f"Function {func_to_run.__name__} cannot have more than one parameter"
+        # assert (func_parameters < 2), f"Function {func_to_run.__name__} cannot have more than one parameter"
         if inspect.iscoroutinefunction(func_to_run):
-            if func_parameters == 1:
-                load_page = await func_to_run(request)
+            if func_parameters > 0:
+                load_page = await func_to_run(request, **request.path_params)
             else:
                 load_page = await func_to_run()
         else:
-            if func_parameters == 1:
-                load_page = func_to_run(request)
+            if func_parameters > 0:
+                load_page = func_to_run(request, **request.path_params)
             else:
                 load_page = func_to_run()
         return load_page
