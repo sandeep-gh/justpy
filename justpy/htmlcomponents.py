@@ -1,4 +1,5 @@
 from types import MethodType
+import collections
 from addict import Dict
 import json, copy, inspect, sys, re
 from html.parser import HTMLParser, tagfind_tolerant, attrfind_tolerant
@@ -12,6 +13,7 @@ import httpx
 from jpcore.template import PageOptions
 from jpcore.component import Component
 from jpcore.webpage import WebPage as BaseWebPage
+from tailwind_tags import tstr
 
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
@@ -381,13 +383,19 @@ class HTMLBaseComponent(JustpyBaseComponent):
         )  # Dictionary of pages the component is on. Not managed by framework.
         self.show = True
         self.set_focus = False
-        self.classes = ""
+
         self.slot = None
         self.scoped_slots = {}  # For Quasar and other Vue.js based components
         self.style = ""
         self.directives = []
         self.data = {}
         self.drag_options = None
+        self.twsty_tags = kwargs.get('twsty_tags', [])
+        if not self.twsty_tags:
+            logging.debug(f"empty twsty_tags for {self.class_name}")
+            self.classes = ""
+        else:
+            self.classes = tstr(*self.twsty_tags)
         self.allowed_events = [
             "click",
             "mouseover",
@@ -519,8 +527,23 @@ class HTMLBaseComponent(JustpyBaseComponent):
             d["drag_options"] = self.drag_options
         return d
 
+class HCC(HTMLBaseComponent):
+    """
+    HCC: html component container
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.spathMap = Dict(track_changes=True)
 
-class Div(HTMLBaseComponent):
+    def addItems(self, cgens):
+        collections.deque(map(lambda cgen: cgen(self), cgens), maxlen=0)
+        for stub in cgens:
+            self.spathMap[stub.spath] = stub.target
+    def getItem(self, stub):
+        return self.spathMap[stub.spath]
+
+    
+class Div(HCC):
     # A general purpose container
     # This is a component that other components can be added to
 

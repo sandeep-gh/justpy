@@ -61,7 +61,7 @@ FRONTEND_ENGINE_LIBS = [fn[:-3]
                         for fn in os.listdir(lib_dir)
                         if fnmatch.fnmatch(fn, "*.js")
                         ]
-
+print (FRONTEND_ENGINE_LIBS)
 TEMPLATES_DIRECTORY = config(
     "TEMPLATES_DIRECTORY", cast=str, default=template_dir
 )
