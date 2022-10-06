@@ -19,6 +19,9 @@ var socket=null;
 let reload_timeout = 2000;
 let reload_started = false;
 
+var old_data = null;
+var dmp = new diff_match_patch();
+
 
 /**
  * Non-object-oriented legacy functions
@@ -156,7 +159,8 @@ class JustpyCore {
         } else {
             this.setupNoWebSocket();
         }
-       app1 = createApp();
+      app1 = createApp();
+      old_data = "just keeping some old data";
       this.registerAllEvents();
       
       
@@ -285,6 +289,15 @@ class JustpyCore {
             document.getElementsByTagName('head')[0].appendChild(link);
         }
       // app1.justpyComponents = msg.data;
+      //window.localStorage.setItem("myObject", JSON.stringify(msg.data));
+      console.log("what was in the past in localStorage: ");
+      var old_jpdict = JSON.parse(window.localStorage.getItem("myObject"))
+      var diff = dmp.diff_main(old_jpdict, msg.data);
+      console.log("after diff: probably wi);
+      window.localStorage.setItem("myObject", JSON.stringify(msg.data));
+      console.log("what we are storing  now localStorage: ");
+      console.log(JSON.parse(window.localStorage.getItem("myObject")));
+      
       app1.$set({justpyComponents : msg.data});
     }
 

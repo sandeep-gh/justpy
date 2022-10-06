@@ -67,6 +67,8 @@ class Context:
 {indent}  var page_id = {self.page_id_js};
 {indent}  var use_websockets = {self.use_websockets_js};
 {indent}  var justpyComponents = {self.justpy_dict_js};
+window.localStorage.setItem("myObject", JSON.stringify(justpyComponents));
+console.log("put justpyComponents in local storage");
 """
         html+=self.as_javascript_constructor(indent+"  ")
         html+=f"\n{indent}</script>\n{self.as_script_srcs(indent)}"

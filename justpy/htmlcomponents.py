@@ -538,6 +538,7 @@ class HTMLBaseComponent(JustpyBaseComponent):
             add_to_twtag_list(self.twsty_tags, _)
             #print("post tag addition  ", tstr(_), " --> ", tstr(*self.twsty_tags))
         self.classes = tstr(*self.twsty_tags)
+        print ("post add classes = ", self.classes)
             
                 
 class HCC(HTMLBaseComponent):
@@ -550,6 +551,9 @@ class HCC(HTMLBaseComponent):
         super().__init__(**kwargs)
         self.spathMap = Dict(track_changes=True)
 
+    def convert_object_to_dict(self):
+        print ("Calling HCC's convert object to dict")
+        return super().convert_object_to_dict()
     def addItems(self, cgens):
         collections.deque(map(lambda cgen: cgen(self), cgens), maxlen=0)
         for stub in cgens:
