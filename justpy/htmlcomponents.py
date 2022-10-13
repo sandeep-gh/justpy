@@ -13,7 +13,7 @@ import httpx
 from jpcore.template import PageOptions
 from jpcore.component import Component
 from jpcore.webpage import WebPage as BaseWebPage
-from tailwind_tags import tstr, add_to_twtag_list, remove_from_twtag_list
+from tailwind_tags import tstr, conc_twtags, remove_from_twtag_list
 
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
@@ -534,8 +534,9 @@ class HTMLBaseComponent(JustpyBaseComponent):
 
     def add_twsty_tags(self, *args):
         #currently on only bg is checked for
-        for _ in args:
-            add_to_twtag_list(self.twsty_tags, _)
+        self.twsty_tags = conc_twtags(*self.twsty_tags, *args)
+        # for _ in args:
+        #     add_to_twtag_list(self.twsty_tags, _)
             #print("post tag addition  ", tstr(_), " --> ", tstr(*self.twsty_tags))
         self.classes = tstr(*self.twsty_tags)
             
@@ -680,6 +681,9 @@ class Div(HCC):
         object_list = []
         for i, obj in enumerate(self.components):
             obj.react(self.data)
+            # no need to render hidden objects
+            # save on comm and frontend rendering
+            #if not "hidden" in obj.classes:
             d = obj.convert_object_to_dict()
             object_list.append(d)
         return object_list
@@ -687,7 +691,7 @@ class Div(HCC):
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
         if hasattr(self, "model"):
-            self.model_update()
+            self.model_update()        
         d["object_props"] = self.build_list()
         if hasattr(self, "text"):
             self.text = str(self.text)
