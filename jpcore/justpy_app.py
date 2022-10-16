@@ -94,6 +94,7 @@ async def handle_event(data_dict, com_type=0, page_event=False):
         "%s %s %s", "In event handler:", connection_type[com_type], str(data_dict)
     )
     event_data = data_dict["event_data"]
+    #print ("handle: event_data = ", event_data)
     try:
         p = WebPage.instances[event_data["page_id"]]
     except:

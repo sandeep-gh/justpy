@@ -106,7 +106,7 @@ class JustpyBaseComponent(Component):
         if temp and delete_flag:
             self.id = None
         else:
-            self.id = cls.next_id
+            self.id = kwargs.get("id") #cls.stub.spath #cls.next_id
             cls.next_id += 1
         self.events = []
         self.event_modifiers = Dict()
@@ -126,9 +126,10 @@ class JustpyBaseComponent(Component):
             for prefix in ["", "on", "on_"]:
                 if prefix + e in kwargs.keys():
                     cls = JustpyBaseComponent
-                    if not self.id:
-                        self.id = cls.next_id
-                        cls.next_id += 1
+                    assert self.id
+                    # if not self.id:
+                    #     self.id = cls.stub.spath #cls.next_id
+                    #     cls.next_id += 1
                     fn = kwargs[prefix + e]
                     if isinstance(fn, str):
                         fn_string = f"def oneliner{self.id}(self, msg):\n {fn}"
@@ -155,9 +156,10 @@ class JustpyBaseComponent(Component):
     ):
         if event_type in self.allowed_events:
             cls = JustpyBaseComponent
-            if not self.id:
-                self.id = cls.next_id
-                cls.next_id += 1
+            assert self.id
+            # if not self.id:
+            #     self.id = cls.next_id
+            #     cls.next_id += 1
             cls.instances[self.id] = self
             self.needs_deletion = True
             if inspect.ismethod(func):
@@ -242,6 +244,8 @@ class JustpyBaseComponent(Component):
 
     def check_transition(self):
         if self.transition and (not self.id):
+            # untested waters w.r.t to id. 
+            assert False
             cls = JustpyBaseComponent
             self.id = cls.next_id
             cls.next_id += 1
@@ -1007,12 +1011,16 @@ class A(Div):
         self.inline_option = "nearest"  # One of "start", "center", "end", or "nearest". Defaults to "nearest".
         super().__init__(**kwargs)
 
-        if not kwargs.get("click"):
+        # skip this for now
+        # self.on requires id
+        # and we don't have id from stub for now
+        # if not kwargs.get("click"):
 
-            def default_click(self, msg):
-                return True
+        #     def default_click(self, msg):
+        #         return True
 
-            self.on("click", default_click)
+        #     self.on("click", default_click)
+        
 
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
@@ -2578,6 +2586,9 @@ class BasicHTMLParser(HTMLParser):
                 else:
                     cls = JustpyBaseComponent
                     if not c.id:
+                        # this is untested;
+                        # move to cls.stub.spath instead of next_id
+                        assert False
                         c.id = cls.next_id
                         cls.next_id += 1
                     fn_string = f"def oneliner{c.id}(self, msg):\n {attr[1]}"  # remove first and last characters which are quotes
