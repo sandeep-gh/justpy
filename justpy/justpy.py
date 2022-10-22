@@ -40,7 +40,7 @@ logging.basicConfig(level=LOGGING_LEVEL, format="%(levelname)s %(module)s: %(mes
 # modify middleware handling according to deprecation
 # https://github.com/encode/starlette/discussions/1762
 
-def build_app(middlewares=None):
+def build_app(middlewares=None, APPCLASS = JustpyApp):
     if not middlewares:
         middlewares = []
     middlewares.append(Middleware(GZipMiddleware))
@@ -51,7 +51,7 @@ def build_app(middlewares=None):
     # implement https://github.com/justpy-org/justpy/issues/535
     #if SESSIONS:
     #    middleware.append(Middleware(SessionMiddleware, secret_key=SECRET_KEY))
-    app = JustpyApp(middleware=middlewares, debug=DEBUG)
+    app = APPCLASS(middleware=middlewares, debug=DEBUG)
     assert app is not None
     app.mount(STATIC_ROUTE, StaticFiles(directory=STATIC_DIRECTORY), name=STATIC_NAME)
     app.mount(
@@ -252,6 +252,7 @@ def justpy(
     if websockets:
         WebPage.use_websockets = True
     else:
+        print ("websockets turned to False")
         WebPage.use_websockets = False
     app.add_jproute("/", func_to_run)
     for k, v in kwargs.items():

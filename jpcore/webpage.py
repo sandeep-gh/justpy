@@ -59,6 +59,7 @@ class WebPage:
             False  # Set to True for Quasar dark mode (use for other dark modes also)
         )
         self.data = {}
+
         WebPage.instances[self.page_id] = self
         for k, v in kwargs.items():
             self.__setattr__(k, v)

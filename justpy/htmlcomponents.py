@@ -1,3 +1,4 @@
+import os
 from types import MethodType
 import collections
 from addict import Dict
@@ -17,8 +18,10 @@ from tailwind_tags import tstr, conc_twtags, remove_from_twtag_list
 
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
+SPATH_AS_ID = None
 
-
+if 'SPATH_AS_ID' in os.environ:
+    SPATH_AS_ID = os.environ['SPATH_AS_ID']
 def parse_dict(cls):
     """
     Decorator for component class definitions that updates _tag_class_dict so that the parser can recognize new components
@@ -106,8 +109,11 @@ class JustpyBaseComponent(Component):
         if temp and delete_flag:
             self.id = None
         else:
-            self.id = kwargs.get("id") #cls.stub.spath #cls.next_id
-            cls.next_id += 1
+            if SPATH_AS_ID:
+                self.id = kwargs.get("id") #cls.stub.spath #cls.next_id
+            else:
+                self.id = cls.next_id
+                cls.next_id += 1
         self.events = []
         self.event_modifiers = Dict()
         self.transition = None
@@ -126,10 +132,10 @@ class JustpyBaseComponent(Component):
             for prefix in ["", "on", "on_"]:
                 if prefix + e in kwargs.keys():
                     cls = JustpyBaseComponent
-                    assert self.id
-                    # if not self.id:
-                    #     self.id = cls.stub.spath #cls.next_id
-                    #     cls.next_id += 1
+                    #assert self.id
+                    if not self.id:
+                        #     self.id = cls.stub.spath #cls.next_id
+                        cls.next_id += 1
                     fn = kwargs[prefix + e]
                     if isinstance(fn, str):
                         fn_string = f"def oneliner{self.id}(self, msg):\n {fn}"
@@ -142,6 +148,10 @@ class JustpyBaseComponent(Component):
     def delete(self):
         if self.needs_deletion:
             if self.delete_flag:
+                import traceback
+                import sys
+                print ("probably untimely deletes ..")
+                traceback.print_stack(file=sys.stdout)
                 JustpyBaseComponent.instances.pop(self.id, None)
                 self.needs_deletion = False
 
@@ -156,10 +166,12 @@ class JustpyBaseComponent(Component):
     ):
         if event_type in self.allowed_events:
             cls = JustpyBaseComponent
-            assert self.id
-            # if not self.id:
-            #     self.id = cls.next_id
-            #     cls.next_id += 1
+            if SPATH_AS_ID:
+                assert self.id
+            else:
+                if not self.id:
+                    self.id = cls.next_id
+                    cls.next_id += 1
             cls.instances[self.id] = self
             self.needs_deletion = True
             if inspect.ismethod(func):
@@ -582,6 +594,10 @@ class Div(HCC):
             for c in self.components:
                 c.delete()
             if self.needs_deletion:
+                import traceback
+                import sys
+                print ("probably untimely deletes ..")
+                traceback.print_stack(file=sys.stdout)
                 JustpyBaseComponent.instances.pop(self.id, None)
             self.components = []
 
@@ -880,7 +896,8 @@ class InputChangeOnly(Input):
 
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
-        d["events"].remove("input")
+        if "input" in d["events"]:
+            d["events"].remove("input")
         if "change" not in d["events"]:
             d["events"].append("change")
         return d
@@ -902,13 +919,14 @@ class Form(Div):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         def default_submit(self, msg):
             print("Default form submit", msg.form_data)
             return True
 
         if not self.has_event_function("submit"):
-            # If an event handler is not  assigned, the front end cannot stop the default page request that happens when a form is submitted
+            # If an event handler is not  assigned,
+            # the front end cannot stop the default page request
+            # that happens when a form is submitted
             self.on("submit", default_submit)
 
 

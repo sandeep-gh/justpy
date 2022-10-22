@@ -59,7 +59,8 @@ function eventHandler(props, event, form_data, aux) {
         }
         e['files'] = files;
     }
-    if (form_data) {
+  if (form_data) {
+    console.log("adding form_data");
         e['form_data'] = form_data;
     } else {
         if (event.currentTarget)

@@ -114,6 +114,8 @@ async def handle_event(data_dict, com_type=0, page_event=False):
         c = p
     else:
         component_id = event_data["id"]
+        print ("component id = ", component_id)
+        print ("component instances = ", Component.instances.keys())
         c = Component.instances.get(component_id, None)
         if c is not None:
             event_data["target"] = c
@@ -238,7 +240,7 @@ class JustpyApp(Starlette):
     def jproute(self,
                 path: str,
                 name: typing.Optional[str] = None,
-                methods = ['GET']
+                methods = ['GET', 'POST']
                 )-> typing.Callable:  # pragma: nocover
         """ 
         justpy route decorator
@@ -261,7 +263,7 @@ class JustpyApp(Starlette):
             
             """
             print("building starlette endpoint and adding to starlette router")
-            endpoint=self.response(func)
+            endpoint = self.response(func)
             self.router.add_route(
                 path,
                 endpoint,
@@ -284,29 +286,35 @@ class JustpyApp(Starlette):
         Args:
             func(typing.Callable): the function (returning a WebPage) to convert to a response
         """
-        async def funcResponse(request)->HTMLResponse:
-            """
-            decorator function to apply the function to the request and
-            return it as a response
-            
-            Args:
-                request(Request): the request to apply the function to
-                
-            Returns:
-                Response: a HTMLResponse applying the justpy infrastructure
-            
-            """
-            new_cookie = self.handle_session_cookie(request)
-            wp = await self.get_page_for_func(request, func)
-            response = self.get_response_for_load_page(request, wp)
-            response = self.set_cookie(request, response, wp, new_cookie)
-            if LATENCY:
-                await asyncio.sleep(LATENCY / 1000)
-            return response
+
+        class EndPoint(HTTPEndpoint):
+            async def get(endpoint_self, request)->HTMLResponse:
+                """
+                decorator function to apply the function to the request and
+                return it as a response
+
+                Args:
+                    request(Request): the request to apply the function to
+
+                Returns:
+                    Response: a HTMLResponse applying the justpy infrastructure
+
+                """
+                new_cookie = self.handle_session_cookie(request)
+                wp = await self.get_page_for_func(request, func)
+                response = self.get_response_for_load_page(request, wp)
+                response = self.set_cookie(request, response, wp, new_cookie)
+                if LATENCY:
+                    await asyncio.sleep(LATENCY / 1000)
+                return response
+
+            async def post(endpoint_self, request) -> Response:
+                print ("i should respond in a post way")
+                return PlainTextResponse("should be a post Response")
     
         # return the decorated function, thus allowing access to the func
         # parameter in the funcResponse later when applied 
-        return funcResponse
+        return EndPoint
 
     async def get_page_for_func(self, request, func:typing.Callable)->WebPage:
         """
@@ -380,7 +388,7 @@ class JustpyApp(Starlette):
             "request": request,
             "page_id": load_page.page_id,
             "justpy_dict": json.dumps(page_dict, default=str),
-            "use_websockets": json.dumps(WebPage.use_websockets),
+            "use_websockets": json.dumps(load_page.use_websockets), #json.dumps(WebPage.use_websockets),
             "options": template_options,
             "page_options": page_options,
             "html": load_page.html,
@@ -388,8 +396,11 @@ class JustpyApp(Starlette):
             "frontend_engine_libs": FRONTEND_ENGINE_LIBS
         }
         # wrap the context in a context object to make it available
+
+        print ("Are WE USING WEBSOCKETS = ", load_page.use_websockets)
         context_obj = Context(context)
         context["context_obj"] = context_obj
+        print ("template_file = ", load_page.template_file)
         response = templates.TemplateResponse(load_page.template_file, context)
         return response
     
@@ -461,6 +472,10 @@ class JustpyAjaxEndpoint(HTTPEndpoint):
             request(Request): the request to handle
         """
         data_dict = await request.json()
+        print ("handling post request: data_dict_keys = ", data_dict.keys())
+        form = await request.form()
+        print ("form = ", form)
+        
         # {'type': 'event', 'event_data': {'event_type': 'beforeunload', 'page_id': 0}}
         if data_dict["event_data"]["event_type"] == "beforeunload":
             return await self.on_disconnect(data_dict["event_data"]["page_id"])
