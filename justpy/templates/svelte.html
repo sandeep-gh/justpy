@@ -6,7 +6,8 @@
     <script src="/templates/js/svelte/bundle.iife.js"></script>
     <link href="/templates/js/svelte/style.css" rel="stylesheet"
           type="text/css">
-     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- {%- if not options.no_internet %} -->
     
     <!-- <\!-- <script src="https://cdn.tailwindcss.com"></script> -\-> -->
@@ -44,14 +45,16 @@
     {%- else %}
     <script src="/templates/local/jquery.js"></script>
     {%- endif %}
-{%- endif %}
+    {%- endif %}
+    
 {%- include 'optional_packages.html' %}
     </head>
     <body style="{{ page_options.body_style }}" class="{{ page_options.body_classes }}">
     {{ page_options.body_html | safe }}
       <div id="components">
       </div>
-    {%- include 'main.html' -%}
+      {%- include 'main.html' -%}
+
   </body>
 </html>
 {%- else %}{{ html | safe }}

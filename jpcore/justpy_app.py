@@ -114,8 +114,7 @@ async def handle_event(data_dict, com_type=0, page_event=False):
         c = p
     else:
         component_id = event_data["id"]
-        print ("component id = ", component_id)
-        print ("component instances = ", Component.instances.keys())
+        #print ("component instances = ", Component.instances.keys())
         c = Component.instances.get(component_id, None)
         if c is not None:
             event_data["target"] = c
@@ -300,10 +299,13 @@ class JustpyApp(Starlette):
                     Response: a HTMLResponse applying the justpy infrastructure
 
                 """
+                print ("---------------------------iEndPoint")
                 new_cookie = self.handle_session_cookie(request)
+                print ("---------------------------iEndPoint")
                 wp = await self.get_page_for_func(request, func)
                 response = self.get_response_for_load_page(request, wp)
-                response = self.set_cookie(request, response, wp, new_cookie)
+                print (" set cookie and go")
+                #response = self.set_cookie(request, response, wp, new_cookie)
                 if LATENCY:
                     await asyncio.sleep(LATENCY / 1000)
                 return response
@@ -442,15 +444,31 @@ class JustpyApp(Starlette):
             new_cookie(bool|Response): True if there is a new cookie. Or Response if cookie was invalid
         """
         if isinstance(new_cookie, Response):
+            print("returning without cookie setting")
             return new_cookie
+        print ("SESSIONS = ", SESSIONS)
+        print ("new_cookie = ", new_cookie)
         if SESSIONS and new_cookie:
+            print ("returing from SESSION and new_cookie : ", request.state.session_id)
             cookie_value = cookie_signer.sign(request.state.session_id)
             cookie_value = cookie_value.decode("utf-8")
             response.set_cookie(
-                SESSION_COOKIE_NAME, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True
+                SESSION_COOKIE_NAME,
+                cookie_value,
+                max_age=COOKIE_MAX_AGE,
+                httponly=True
             )
+            for k, v in load_page.http_cookies.items():
+                cookie_value = cookie_signer.sign(v)
+                cookie_value = cookie_value.decode("utf-8")
+                
+                response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
             for k, v in load_page.cookies.items():
-                response.set_cookie(k, v, max_age=COOKIE_MAX_AGE, httponly=True)
+                cookie_value = cookie_signer.sign(v)
+                cookie_value = cookie_value.decode("utf-8")
+                print ("cookie_value = ", cookie_value)
+                response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE)                
+
         return response
 
 class JustpyAjaxEndpoint(HTTPEndpoint):
@@ -472,7 +490,8 @@ class JustpyAjaxEndpoint(HTTPEndpoint):
             request(Request): the request to handle
         """
         data_dict = await request.json()
-        print ("handling post request: data_dict_keys = ", data_dict.keys())
+        #print ("handling post: request body : data_dict_keys = ", data_dict)
+        print ("handling post : response headers = ", request.headers.keys())
         form = await request.form()
         print ("form = ", form)
         
@@ -480,6 +499,7 @@ class JustpyAjaxEndpoint(HTTPEndpoint):
         if data_dict["event_data"]["event_type"] == "beforeunload":
             return await self.on_disconnect(data_dict["event_data"]["page_id"])
 
+        print ("did we get the cookie on form submit = ", request.cookies)
         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if SESSIONS and session_cookie:
             session_id = cookie_signer.unsign(session_cookie).decode("utf-8")

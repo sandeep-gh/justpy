@@ -142,10 +142,12 @@ def build_app(middlewares=None, APPCLASS = JustpyApp):
                 return
 
         async def on_disconnect(self, websocket, close_code):
+            
             try:
                 pid = websocket.page_id
             except:
                 return
+            print ("on_disconnect called for pid = ", pid)
             websocket.open = False
             WebPage.sockets[pid].pop(websocket.id)
             if not WebPage.sockets[pid]:

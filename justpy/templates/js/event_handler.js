@@ -140,7 +140,7 @@ function send_to_server(e, event_type, debug_flag) {
             return;
         }
         if (websocket_ready) {
-            socket.send(JSON.stringify({'type': event_type, 'event_data': e}));
+          socket.send(JSON.stringify({'type': event_type, 'event_data': e, 'csrftoken': 'somevalue'}));
         } else {
             setTimeout(function () {
                 socket.send(JSON.stringify({'type': event_type, 'event_data': e}));
@@ -148,10 +148,14 @@ function send_to_server(e, event_type, debug_flag) {
         }
     } else {
 
-        d = JSON.stringify({'type': 'event', 'event_data': e});
+      d = JSON.stringify({'type': 'event', 'event_data': e});
+      var csrftoken = Cookies.get('csrftoken');
+      console.log("crsftoken from event-handlers");
+      console.log(csrftoken);
         $.ajax({
             type: "POST",
-            url: "/zzz_justpy_ajax",
+          url: "/zzz_justpy_ajax",
+          headers: { 'x-csrftoken': csrftoken }, 
             data: JSON.stringify({'type': event_type, 'event_data': e}),
             success: function (msg) {
                 if (msg.page_options.redirect) {

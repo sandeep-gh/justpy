@@ -64,7 +64,7 @@ class Context:
         """
         html=self.as_script_src("justpy_core")
         html+=f"""{indent}<script>
-{indent}  var page_id = {self.page_id_js};
+{indent}  var page_id = '{self.page_id_js}';
 {indent}  var use_websockets = {self.use_websockets_js};
 {indent}  var justpyComponents = {self.justpy_dict_js};
 """
@@ -107,7 +107,7 @@ class Context:
             static_resources_url = "/"
         javascript = f"""let justpy_core=new JustpyCore(
             this, // window
-            {self.page_id_js}, // page_id
+            '{self.page_id_js}', // page_id
             '{self.title_js}', // title
             '{self.use_websockets_js}', // use_websockets
             '{self.redirect_js}', // redirect

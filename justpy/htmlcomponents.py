@@ -148,10 +148,6 @@ class JustpyBaseComponent(Component):
     def delete(self):
         if self.needs_deletion:
             if self.delete_flag:
-                import traceback
-                import sys
-                print ("probably untimely deletes ..")
-                traceback.print_stack(file=sys.stdout)
                 JustpyBaseComponent.instances.pop(self.id, None)
                 self.needs_deletion = False
 
@@ -594,10 +590,10 @@ class Div(HCC):
             for c in self.components:
                 c.delete()
             if self.needs_deletion:
-                import traceback
-                import sys
-                print ("probably untimely deletes ..")
-                traceback.print_stack(file=sys.stdout)
+                # import traceback
+                # import sys
+                # print ("probably untimely deletes ..")
+                # traceback.print_stack(file=sys.stdout)
                 JustpyBaseComponent.instances.pop(self.id, None)
             self.components = []
 
