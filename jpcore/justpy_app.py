@@ -21,7 +21,7 @@ from sys import platform
 from multiprocessing import Process
 from threading import Thread
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.routing import Route, Mount
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import HTMLResponse, JSONResponse,PlainTextResponse, Response
 from starlette.templating import Jinja2Templates
@@ -225,10 +225,22 @@ class JustpyApp(Starlette):
             name(str): the name of the route
         """
         endpoint=self.response(wpfunc)
+        
         if name is None:
             name=wpfunc.__name__
         self.router.add_route(path,endpoint,name=name,include_in_schema=False)
 
+    def mount_routes(self, mount_point, jproutes):
+        """
+        app.mount has bugs potentially due to template rendering (which needs to go away).
+        this is a workaround to mount a bunch of endpoints under a common endpoint.
+        """
+        
+        routes = [Route(path, self.response(func), name=name)
+                  for path, func, name in jproutes
+                  ]
+        self.router.routes.append(Mount(mount_point, routes = routes))
+        
     def requires(self, scopes, status_code=403, redirect=None):
         auth_decorator = auth_requires(scopes, status_code, redirect)
         def wrapper(func):
@@ -286,37 +298,61 @@ class JustpyApp(Starlette):
             func(typing.Callable): the function (returning a WebPage) to convert to a response
         """
 
-        class EndPoint(HTTPEndpoint):
-            async def get(endpoint_self, request)->HTMLResponse:
-                """
-                decorator function to apply the function to the request and
-                return it as a response
-
-                Args:
-                    request(Request): the request to apply the function to
-
-                Returns:
-                    Response: a HTMLResponse applying the justpy infrastructure
-
-                """
-                print ("---------------------------iEndPoint")
-                new_cookie = self.handle_session_cookie(request)
-                print ("---------------------------iEndPoint")
-                wp = await self.get_page_for_func(request, func)
-                response = self.get_response_for_load_page(request, wp)
-                print (" set cookie and go")
-                #response = self.set_cookie(request, response, wp, new_cookie)
-                if LATENCY:
-                    await asyncio.sleep(LATENCY / 1000)
-                return response
-
-            async def post(endpoint_self, request) -> Response:
-                print ("i should respond in a post way")
-                return PlainTextResponse("should be a post Response")
+        async def funcResponse(request)->HTMLResponse:
+            """
+            decorator function to apply the function to the request and
+            return it as a response
+            
+            Args:
+                request(Request): the request to apply the function to
+                
+            Returns:
+                Response: a HTMLResponse applying the justpy infrastructure
+            
+            """
+            new_cookie = self.handle_session_cookie(request)
+            wp = await self.get_page_for_func(request, func)
+            response = self.get_response_for_load_page(request, wp)
+            response = self.set_cookie(request, response, wp, new_cookie)
+            if LATENCY:
+                await asyncio.sleep(LATENCY / 1000)
+            return response
     
         # return the decorated function, thus allowing access to the func
         # parameter in the funcResponse later when applied 
-        return EndPoint
+        return funcResponse
+    
+        # class EndPoint(HTTPEndpoint):
+        #     async def get(endpoint_self, request)->HTMLResponse:
+        #         """
+        #         decorator function to apply the function to the request and
+        #         return it as a response
+
+        #         Args:
+        #             request(Request): the request to apply the function to
+
+        #         Returns:
+        #             Response: a HTMLResponse applying the justpy infrastructure
+
+        #         """
+        #         print ("---------------------------iEndPoint")
+        #         new_cookie = self.handle_session_cookie(request)
+        #         print ("---------------------------iEndPoint")
+        #         wp = await self.get_page_for_func(request, func)
+        #         response = self.get_response_for_load_page(request, wp)
+        #         print (" set cookie and go")
+        #         response = self.set_cookie(request, response, wp, new_cookie)
+        #         if LATENCY:
+        #             await asyncio.sleep(LATENCY / 1000)
+        #         return response
+
+        #     async def post(endpoint_self, request) -> Response:
+        #         print ("i should respond in a post way")
+        #         return PlainTextResponse("should be a post Response")
+    
+        # # return the decorated function, thus allowing access to the func
+        # # parameter in the funcResponse later when applied 
+        # return EndPoint
 
     async def get_page_for_func(self, request, func:typing.Callable)->WebPage:
         """
@@ -404,6 +440,7 @@ class JustpyApp(Starlette):
         context["context_obj"] = context_obj
         print ("template_file = ", load_page.template_file)
         response = templates.TemplateResponse(load_page.template_file, context)
+        print ("response = ", response)
         return response
     
     def handle_session_cookie(self,request) -> typing.Union[bool, Response]:
@@ -427,6 +464,7 @@ class JustpyApp(Starlette):
                 request.session_id = session_id
             else:
                 # Create new session_id
+                print("creating a new cookie for session")
                 request.state.session_id = str(uuid.uuid4().hex)
                 request.session_id = request.state.session_id
                 new_cookie = True
@@ -449,24 +487,43 @@ class JustpyApp(Starlette):
         print ("SESSIONS = ", SESSIONS)
         print ("new_cookie = ", new_cookie)
         if SESSIONS and new_cookie:
-            print ("returing from SESSION and new_cookie : ", request.state.session_id)
+            #print ("returing from SESSION and new_cookie : ", request.state.session_id)
             cookie_value = cookie_signer.sign(request.state.session_id)
             cookie_value = cookie_value.decode("utf-8")
+            print ("signed session cookie = ", cookie_value)
+            
             response.set_cookie(
                 SESSION_COOKIE_NAME,
                 cookie_value,
                 max_age=COOKIE_MAX_AGE,
                 httponly=True
             )
-            for k, v in load_page.http_cookies.items():
-                cookie_value = cookie_signer.sign(v)
-                cookie_value = cookie_value.decode("utf-8")
+            # also add a csrftoken
+            # request.state.csrftoken = "scsdsfwe"
+            # cookie_value = cookie_signer.sign(request.state.csrftoken)
+            # cookie_value = cookie_value.decode("utf-8")
+            # print ("signed csrftoken cookie = ", cookie_value)
+            
+            # response.set_cookie(
+            #     "csrftoken",
+            #     cookie_value,
+            #     max_age=COOKIE_MAX_AGE
+            # )
+            
+            # for k, v in load_page.http_cookies.items():
+            #     cookie_value = cookie_signer.sign(v)
+            #     cookie_value = cookie_value.decode("utf-8")
                 
-                response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
+            #     response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
             for k, v in load_page.cookies.items():
+
                 cookie_value = cookie_signer.sign(v)
                 cookie_value = cookie_value.decode("utf-8")
                 print ("cookie_value = ", cookie_value)
+                logging.debug("add new cookied key=",
+                              k,
+                              " :value=", v,
+                              " :signed_value=", cookie_value)
                 response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE)                
 
         return response
@@ -491,15 +548,15 @@ class JustpyAjaxEndpoint(HTTPEndpoint):
         """
         data_dict = await request.json()
         #print ("handling post: request body : data_dict_keys = ", data_dict)
-        print ("handling post : response headers = ", request.headers.keys())
+        #print ("handling post : response headers = ", request.headers.keys())
         form = await request.form()
-        print ("form = ", form)
         
         # {'type': 'event', 'event_data': {'event_type': 'beforeunload', 'page_id': 0}}
         if data_dict["event_data"]["event_type"] == "beforeunload":
             return await self.on_disconnect(data_dict["event_data"]["page_id"])
 
-        print ("did we get the cookie on form submit = ", request.cookies)
+        # print ("did we get the cookie on form submit (its signed). = ", request.cookies)
+        #print ("the unsigned: ", request.state.messages, " type=", type(request.state.messages))
         session_cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if SESSIONS and session_cookie:
             session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
