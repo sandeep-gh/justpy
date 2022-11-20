@@ -284,7 +284,7 @@ class JustpyCore {
 			}
 			document.getElementsByTagName('head')[0].appendChild(link);
 		}
-		app1.justpyComponents = msg.data;
+		app1.$set({justpyComponents : msg.data});
 	}
 
 	/**
@@ -436,7 +436,7 @@ class JustpyCore {
 						'event_data': { 'event_type': 'page_update', 'page_id': this.page_id }
 					}),
 					success: function(msg) {
-						if (msg) app1.justpyComponents = msg.data;
+						if (msg) app1.$set({justpyComponents : msg.data});
 					},
 					dataType: 'json'
 				});

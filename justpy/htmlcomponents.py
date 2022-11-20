@@ -1,4 +1,6 @@
+import os
 from types import MethodType
+import collections
 from addict import Dict
 import json, copy, inspect, sys, re
 from html.parser import HTMLParser, tagfind_tolerant, attrfind_tolerant
@@ -12,11 +14,14 @@ import httpx
 from jpcore.template import PageOptions
 from jpcore.component import Component
 from jpcore.webpage import WebPage as BaseWebPage
+from tailwind_tags import tstr, conc_twtags, remove_from_twtag_list
 
 # Dictionary for translating from tag to class
 _tag_class_dict = {}
+SPATH_AS_ID = None
 
-
+if 'SPATH_AS_ID' in os.environ:
+    SPATH_AS_ID = os.environ['SPATH_AS_ID']
 def parse_dict(cls):
     """
     Decorator for component class definitions that updates _tag_class_dict so that the parser can recognize new components
@@ -104,8 +109,11 @@ class JustpyBaseComponent(Component):
         if temp and delete_flag:
             self.id = None
         else:
-            self.id = cls.next_id
-            cls.next_id += 1
+            if SPATH_AS_ID:
+                self.id = kwargs.get("id") #cls.stub.spath #cls.next_id
+            else:
+                self.id = cls.next_id
+                cls.next_id += 1
         self.events = []
         self.event_modifiers = Dict()
         self.transition = None
@@ -124,8 +132,9 @@ class JustpyBaseComponent(Component):
             for prefix in ["", "on", "on_"]:
                 if prefix + e in kwargs.keys():
                     cls = JustpyBaseComponent
+                    #assert self.id
                     if not self.id:
-                        self.id = cls.next_id
+                        #     self.id = cls.stub.spath #cls.next_id
                         cls.next_id += 1
                     fn = kwargs[prefix + e]
                     if isinstance(fn, str):
@@ -153,9 +162,12 @@ class JustpyBaseComponent(Component):
     ):
         if event_type in self.allowed_events:
             cls = JustpyBaseComponent
-            if not self.id:
-                self.id = cls.next_id
-                cls.next_id += 1
+            if SPATH_AS_ID:
+                assert self.id
+            else:
+                if not self.id:
+                    self.id = cls.next_id
+                    cls.next_id += 1
             cls.instances[self.id] = self
             self.needs_deletion = True
             if inspect.ismethod(func):
@@ -191,14 +203,18 @@ class JustpyBaseComponent(Component):
     def has_class(self, class_name):
         return class_name in self.classes.split()
 
-    def remove_class(self, tw_class):
-        class_list = self.classes.split()
-        try:
-            class_list.remove(tw_class)
-        except:
-            pass
-        self.classes = " ".join(class_list)
+    def remove_class(self, *args):
+        for _ in args:
+            self.twsty_tags.remove(_)
+        self.classes = tstr(*self.twsty_tags)
 
+    def remove_twsty_tags(self, *args):
+        #print ("to remove from ", tstr(*self.twsty_tags))
+        for _ in args:
+            remove_from_twtag_list(self.twsty_tags, _)
+            #print ("post removal from ", tstr(*self.twsty_tags))
+        self.classes = tstr(*self.twsty_tags)
+        
     def hidden(self, flag=True):
         if flag:
             self.set_class("hidden")
@@ -236,6 +252,8 @@ class JustpyBaseComponent(Component):
 
     def check_transition(self):
         if self.transition and (not self.id):
+            # untested waters w.r.t to id. 
+            assert False
             cls = JustpyBaseComponent
             self.id = cls.next_id
             cls.next_id += 1
@@ -381,13 +399,19 @@ class HTMLBaseComponent(JustpyBaseComponent):
         )  # Dictionary of pages the component is on. Not managed by framework.
         self.show = True
         self.set_focus = False
-        self.classes = ""
+
         self.slot = None
         self.scoped_slots = {}  # For Quasar and other Vue.js based components
         self.style = ""
         self.directives = []
         self.data = {}
         self.drag_options = None
+        self.twsty_tags = kwargs.get('twsty_tags', [])
+        if not self.twsty_tags:
+            logging.debug(f"empty twsty_tags for {self.class_name}")
+            self.classes = ""
+        else:
+            self.classes = tstr(*self.twsty_tags)
         self.allowed_events = [
             "click",
             "mouseover",
@@ -520,11 +544,35 @@ class HTMLBaseComponent(JustpyBaseComponent):
         return d
 
 
-class Div(HTMLBaseComponent):
-    """ 
+    def add_twsty_tags(self, *args):
+        #currently on only bg is checked for
+        self.twsty_tags = conc_twtags(*self.twsty_tags, *args)
+        # for _ in args:
+        #     add_to_twtag_list(self.twsty_tags, _)
+            #print("post tag addition  ", tstr(_), " --> ", tstr(*self.twsty_tags))
+        self.classes = tstr(*self.twsty_tags)
+            
+                
+class HCC(HTMLBaseComponent):
+    """
+    HCC: html component container
     A general purpose html container
     This is a component that other components can be added to
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.spathMap = Dict(track_changes=True)
+
+    def addItems(self, cgens):
+        collections.deque(map(lambda cgen: cgen(self), cgens), maxlen=0)
+        for stub in cgens:
+            self.spathMap[stub.spath] = stub.target
+
+    def getItem(self, stub):
+        return self.spathMap[stub.spath]
+
+    
+class Div(HCC):
 
     html_tag = "div"
 
@@ -542,6 +590,10 @@ class Div(HTMLBaseComponent):
             for c in self.components:
                 c.delete()
             if self.needs_deletion:
+                # import traceback
+                # import sys
+                # print ("probably untimely deletes ..")
+                # traceback.print_stack(file=sys.stdout)
                 JustpyBaseComponent.instances.pop(self.id, None)
             self.components = []
 
@@ -645,6 +697,9 @@ class Div(HTMLBaseComponent):
         object_list = []
         for i, obj in enumerate(self.components):
             obj.react(self.data)
+            # no need to render hidden objects
+            # save on comm and frontend rendering
+            #if not "hidden" in obj.classes:
             d = obj.convert_object_to_dict()
             object_list.append(d)
         return object_list
@@ -652,7 +707,7 @@ class Div(HTMLBaseComponent):
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
         if hasattr(self, "model"):
-            self.model_update()
+            self.model_update()        
         d["object_props"] = self.build_list()
         if hasattr(self, "text"):
             self.text = str(self.text)
@@ -860,13 +915,14 @@ class Form(Div):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         def default_submit(self, msg):
             print("Default form submit", msg.form_data)
             return True
 
         if not self.has_event_function("submit"):
-            # If an event handler is not  assigned, the front end cannot stop the default page request that happens when a form is submitted
+            # If an event handler is not  assigned,
+            # the front end cannot stop the default page request
+            # that happens when a form is submitted
             self.on("submit", default_submit)
 
 
@@ -969,12 +1025,16 @@ class A(Div):
         self.inline_option = "nearest"  # One of "start", "center", "end", or "nearest". Defaults to "nearest".
         super().__init__(**kwargs)
 
-        if not kwargs.get("click"):
+        # skip this for now
+        # self.on requires id
+        # and we don't have id from stub for now
+        # if not kwargs.get("click"):
 
-            def default_click(self, msg):
-                return True
+        #     def default_click(self, msg):
+        #         return True
 
-            self.on("click", default_click)
+        #     self.on("click", default_click)
+        
 
     def convert_object_to_dict(self):
         d = super().convert_object_to_dict()
@@ -2540,6 +2600,9 @@ class BasicHTMLParser(HTMLParser):
                 else:
                     cls = JustpyBaseComponent
                     if not c.id:
+                        # this is untested;
+                        # move to cls.stub.spath instead of next_id
+                        assert False
                         c.id = cls.next_id
                         cls.next_id += 1
                     fn_string = f"def oneliner{c.id}(self, msg):\n {attr[1]}"  # remove first and last characters which are quotes

@@ -59,7 +59,8 @@ function eventHandler(props, event, form_data, aux) {
         }
         e['files'] = files;
     }
-    if (form_data) {
+  if (form_data) {
+    console.log("adding form_data");
         e['form_data'] = form_data;
     } else {
         if (event.currentTarget)
@@ -149,7 +150,7 @@ function send_to_server(e, event_type, debug_flag) {
         }
         const data = JSON.stringify({'type': event_type, 'event_data': e});
         if (websocket_ready) {
-            socket.send(data);
+          socket.send(JSON.stringify({'type': event_type, 'event_data': e, 'csrftoken': 'somevalue'}));
         } else {
             setTimeout(function () {
                 socket.send(data);
@@ -157,10 +158,14 @@ function send_to_server(e, event_type, debug_flag) {
         }
     } else {
 
-        d = JSON.stringify({'type': 'event', 'event_data': e});  // ToDo: can this statement be removed? It is unused and present since the first version of justpy (works without - side effects unknown)
+      d = JSON.stringify({'type': 'event', 'event_data': e});
+      var csrftoken = Cookies.get('csrftoken');
+      console.log("crsftoken from event-handlers");
+      console.log(csrftoken);
         $.ajax({
             type: "POST",
-            url: "/zzz_justpy_ajax",
+          url: "/zzz_justpy_ajax",
+          headers: { 'x-csrftoken': csrftoken }, 
             data: JSON.stringify({'type': event_type, 'event_data': e}),
             success: function (msg) {
                 if (msg.page_options.redirect) {

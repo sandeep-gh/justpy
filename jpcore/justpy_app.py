@@ -20,10 +20,13 @@ from sys import platform
 from multiprocessing import Process
 from threading import Thread
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.routing import Route, Mount
 from starlette.endpoints import HTTPEndpoint
 from starlette.responses import HTMLResponse, JSONResponse,PlainTextResponse, Response
 from starlette.templating import Jinja2Templates
+from starlette.authentication import (
+    requires as auth_requires
+)
 
 from jpcore.component import Component
 import jpcore.jpconfig as jpconfig
@@ -97,6 +100,7 @@ async def handle_event(data_dict, com_type=0, page_event=False):
         "%s %s %s", "In event handler:", connection_type[com_type], str(data_dict)
     )
     event_data = data_dict["event_data"]
+    #print ("handle: event_data = ", event_data)
     try:
         p = WebPage.instances[event_data["page_id"]]
     except:
@@ -116,6 +120,7 @@ async def handle_event(data_dict, com_type=0, page_event=False):
         c = p
     else:
         component_id = event_data["id"]
+        #print ("component instances = ", Component.instances.keys())
         c = Component.instances.get(component_id, None)
         if c is not None:
             event_data["target"] = c
@@ -213,7 +218,9 @@ class JustpyApp(Starlette):
         if isinstance(route,Route):
             text+=f"func: {route.endpoint.__name__}"
         return text
+
     
+            
     def add_jproute(self,path:str,wpfunc:typing.Callable,name:str=None):
         """
         add a route for the given Webpage returning func
@@ -224,13 +231,34 @@ class JustpyApp(Starlette):
             name(str): the name of the route
         """
         endpoint=self.response(wpfunc)
+        
         if name is None:
             name=wpfunc.__name__
         self.router.add_route(path,endpoint,name=name,include_in_schema=False)
+
+    def mount_routes(self, mount_point, jproutes):
+        """
+        app.mount has bugs potentially due to template rendering (which needs to go away).
+        this is a workaround to mount a bunch of endpoints under a common endpoint.
+        """
+        
+        routes = [Route(path, self.response(func), name=name)
+                  for path, func, name in jproutes
+                  ]
+        self.router.routes.append(Mount(mount_point, routes = routes))
+        
+    def requires(self, scopes, status_code=403, redirect=None):
+        auth_decorator = auth_requires(scopes, status_code, redirect)
+        def wrapper(func):
+            
+            return auth_decorator(func)
+        return wrapper
     
     def jproute(self,
-        path: str,
-        name: typing.Optional[str] = None)-> typing.Callable:  # pragma: nocover
+                path: str,
+                name: typing.Optional[str] = None,
+                methods = ['GET', 'POST']
+                )-> typing.Callable:  # pragma: nocover
         """ 
         justpy route decorator
         
@@ -251,11 +279,13 @@ class JustpyApp(Starlette):
                 Callable: an endpoint that has been routed
             
             """
-            endpoint=self.response(func)
+            print("building starlette endpoint and adding to starlette router")
+            endpoint = self.response(func)
             self.router.add_route(
                 path,
                 endpoint,
                 name=name if name is not None else func.__name__,
+                methods=methods,
                 include_in_schema=False,
             )
             self.route(path)
@@ -273,6 +303,7 @@ class JustpyApp(Starlette):
         Args:
             func(typing.Callable): the function (returning a WebPage) to convert to a response
         """
+
         async def funcResponse(request)->HTMLResponse:
             """
             decorator function to apply the function to the request and
@@ -296,6 +327,38 @@ class JustpyApp(Starlette):
         # return the decorated function, thus allowing access to the func
         # parameter in the funcResponse later when applied 
         return funcResponse
+    
+        # class EndPoint(HTTPEndpoint):
+        #     async def get(endpoint_self, request)->HTMLResponse:
+        #         """
+        #         decorator function to apply the function to the request and
+        #         return it as a response
+
+        #         Args:
+        #             request(Request): the request to apply the function to
+
+        #         Returns:
+        #             Response: a HTMLResponse applying the justpy infrastructure
+
+        #         """
+        #         print ("---------------------------iEndPoint")
+        #         new_cookie = self.handle_session_cookie(request)
+        #         print ("---------------------------iEndPoint")
+        #         wp = await self.get_page_for_func(request, func)
+        #         response = self.get_response_for_load_page(request, wp)
+        #         print (" set cookie and go")
+        #         response = self.set_cookie(request, response, wp, new_cookie)
+        #         if LATENCY:
+        #             await asyncio.sleep(LATENCY / 1000)
+        #         return response
+
+        #     async def post(endpoint_self, request) -> Response:
+        #         print ("i should respond in a post way")
+        #         return PlainTextResponse("should be a post Response")
+    
+        # # return the decorated function, thus allowing access to the func
+        # # parameter in the funcResponse later when applied 
+        # return EndPoint
 
     async def get_page_for_func(self, request, func:typing.Callable)->WebPage:
         """
@@ -312,15 +375,15 @@ class JustpyApp(Starlette):
         # in scope here (anymore) anyways
         func_to_run = func
         func_parameters = len(inspect.signature(func_to_run).parameters)
-        assert (func_parameters < 2), f"Function {func_to_run.__name__} cannot have more than one parameter"
+        # assert (func_parameters < 2), f"Function {func_to_run.__name__} cannot have more than one parameter"
         if inspect.iscoroutinefunction(func_to_run):
-            if func_parameters == 1:
-                load_page = await func_to_run(request)
+            if func_parameters > 0:
+                load_page = await func_to_run(request, **request.path_params)
             else:
                 load_page = await func_to_run()
         else:
-            if func_parameters == 1:
-                load_page = func_to_run(request)
+            if func_parameters > 0:
+                load_page = func_to_run(request, **request.path_params)
             else:
                 load_page = func_to_run()
         return load_page
@@ -369,7 +432,7 @@ class JustpyApp(Starlette):
             "request": request,
             "page_id": load_page.page_id,
             "justpy_dict": json.dumps(page_dict, default=str),
-            "use_websockets": json.dumps(WebPage.use_websockets),
+            "use_websockets": json.dumps(load_page.use_websockets), #json.dumps(WebPage.use_websockets),
             "options": template_options,
             "page_options": page_options,
             "html": load_page.html,
@@ -377,9 +440,13 @@ class JustpyApp(Starlette):
             "frontend_engine_libs": jpconfig.FRONTEND_ENGINE_LIBS
         }
         # wrap the context in a context object to make it available
+
+        print ("Are WE USING WEBSOCKETS = ", load_page.use_websockets)
         context_obj = Context(context)
         context["context_obj"] = context_obj
+        print ("template_file = ", load_page.template_file)
         response = templates.TemplateResponse(load_page.template_file, context)
+        print ("response = ", response)
         return response
     
     def handle_session_cookie(self,request) -> typing.Union[bool, Response]:
@@ -403,6 +470,7 @@ class JustpyApp(Starlette):
                 request.session_id = session_id
             else:
                 # Create new session_id
+                print("creating a new cookie for session")
                 request.state.session_id = str(uuid.uuid4().hex)
                 request.session_id = request.state.session_id
                 new_cookie = True
@@ -420,6 +488,7 @@ class JustpyApp(Starlette):
             new_cookie(bool|Response): True if there is a new cookie. Or Response if cookie was invalid
         """
         if isinstance(new_cookie, Response):
+            print("returning without cookie setting")
             return new_cookie
         if jpconfig.SESSIONS and new_cookie:
             cookie_value = cookie_signer.sign(request.state.session_id)
@@ -427,6 +496,23 @@ class JustpyApp(Starlette):
             response.set_cookie(
                 jpconfig.SESSION_COOKIE_NAME, cookie_value, max_age=jpconfig.COOKIE_MAX_AGE, httponly=True
             )
+            # also add a csrftoken
+            # request.state.csrftoken = "scsdsfwe"
+            # cookie_value = cookie_signer.sign(request.state.csrftoken)
+            # cookie_value = cookie_value.decode("utf-8")
+            # print ("signed csrftoken cookie = ", cookie_value)
+            
+            # response.set_cookie(
+            #     "csrftoken",
+            #     cookie_value,
+            #     max_age=COOKIE_MAX_AGE
+            # )
+            
+            # for k, v in load_page.http_cookies.items():
+            #     cookie_value = cookie_signer.sign(v)
+            #     cookie_value = cookie_value.decode("utf-8")
+                
+            #     response.set_cookie(k, cookie_value, max_age=COOKIE_MAX_AGE, httponly=True)
             for k, v in load_page.cookies.items():
                 response.set_cookie(k, v, max_age=jpconfig.COOKIE_MAX_AGE, httponly=True)
         return response
@@ -450,6 +536,10 @@ class JustpyAjaxEndpoint(HTTPEndpoint):
             request(Request): the request to handle
         """
         data_dict = await request.json()
+        #print ("handling post: request body : data_dict_keys = ", data_dict)
+        #print ("handling post : response headers = ", request.headers.keys())
+        form = await request.form()
+        
         # {'type': 'event', 'event_data': {'event_type': 'beforeunload', 'page_id': 0}}
         if data_dict["event_data"]["event_type"] == "beforeunload":
             return await self.on_disconnect(data_dict["event_data"]["page_id"])

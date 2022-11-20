@@ -3,6 +3,8 @@ Created on 2022-09-12
 
 @author: wf
 '''
+import time
+from hashlib import sha256
 from addict import Dict
 import asyncio
 import inspect
@@ -33,21 +35,27 @@ class WebPage:
         "keypress",
     ]
 
+    def gen_pageid(page_title, char_limit=13):
+        hstr = page_title + str(WebPage.next_page_id) + str(time.time())
+        WebPage.next_page_id += 1    
+        hashval = sha256(hstr.encode()).hexdigest()[:char_limit]
+        print ("generating page with id = ", hashval)
+        return hashval
+
     def __init__(self, **kwargs):
-        """
-        constructor
-        """
-        self.page_id = WebPage.next_page_id
-        WebPage.next_page_id += 1
         self.cache = None  # Set this attribute if you want to use the cache.
         self.use_cache = False  # Determines whether the page uses the cache or not
         self.template_file = "tailwind.html"
-        self.title = "JustPy"
+        self.title = kwargs.pop("title", "justpy")
         self.display_url = None
         self.redirect = None
         self.open = None
         self.favicon = None
         self.components = []  # list of direct children components on page
+        # http only cookies
+        self.http_cookies = {}
+
+        # non-http cookies ; accessible via javascript on the page
         self.cookies = {}
         self.css = ""
         self.head_html = ""
@@ -62,10 +70,12 @@ class WebPage:
             False  # Set to True for Quasar dark mode (use for other dark modes also)
         )
         self.data = {}
+        self.page_id = WebPage.gen_pageid(self.title)
         WebPage.instances[self.page_id] = self
         for k, v in kwargs.items():
             self.__setattr__(k, v)
-            
+
+        #WebPage.next_page_id += 1    
     def __repr__(self):
         return f"{self.__class__.__name__}(page_id: {self.page_id}, number of components: {len(self.components)}, reload interval: {self.reload_interval})"
 

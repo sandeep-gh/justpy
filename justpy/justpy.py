@@ -35,21 +35,135 @@ if jpconfig.VERBOSE:
 
 logging.basicConfig(level=jpconfig.LOGGING_LEVEL, format="%(levelname)s %(module)s: %(message)s")
 
-# modify middleware handling according to deprecation
-# https://github.com/encode/starlette/discussions/1762
-middleware = [Middleware(GZipMiddleware)]
-if jpconfig.SSL_KEYFILE and jpconfig.SSL_CERTFILE:
-    middleware.append(Middleware(HTTPSRedirectMiddleware))
-#@TODO     
-# implement https://github.com/justpy-org/justpy/issues/535
-#if SESSIONS:
-#    middleware.append(Middleware(SessionMiddleware, secret_key=SECRET_KEY))
-app = JustpyApp(middleware=middleware, debug=jpconfig.DEBUG)
-app.mount(jpconfig.STATIC_ROUTE, StaticFiles(directory=jpconfig.STATIC_DIRECTORY), name=jpconfig.STATIC_NAME)
-app.mount(
-    "/templates", StaticFiles(directory=current_dir + "/templates"), name="templates"
-)
+def build_app(middlewares=None, APPCLASS = JustpyApp):
+    if not middlewares:
+        middlewares = []
+    middlewares.append(Middleware(GZipMiddleware))
+    if jpconfig.SSL_KEYFILE and jpconfig.SSL_CERTFILE:
+        middlewares.append(Middleware(HTTPSRedirectMiddleware))
+    
+    #@TODO     
+    # implement https://github.com/justpy-org/justpy/issues/535
+    #if SESSIONS:
+    #    middleware.append(Middleware(SessionMiddleware, secret_key=SECRET_KEY))
+    app = APPCLASS(middleware=middlewares, debug=DEBUG)
+    assert app is not None
+    app.mount(jpconfig.STATIC_ROUTE, StaticFiles(directory=jpconfig.STATIC_DIRECTORY), name=jpconfig.STATIC_NAME)
+    app.mount(
+        "/templates", StaticFiles(directory=current_dir + "/templates"), name="templates"
+    )
 
+    @app.on_event("startup")
+    async def justpy_startup():
+        WebPage.loop = asyncio.get_event_loop()
+        JustPy.loop = WebPage.loop
+        JustPy.STATIC_DIRECTORY = jpconfig.STATIC_DIRECTORY
+
+        if startup_func:
+            if inspect.iscoroutinefunction(startup_func):
+                await startup_func()
+            else:
+                startup_func()
+        protocol = "https" if jpconfig.SSL_KEYFILE else "http"
+        print(f"JustPy ready to go on {protocol}://{HOST}:{PORT}")
+
+    
+    @app.route("/zzz_justpy_ajax")
+    class AjaxEndpoint(JustpyAjaxEndpoint):
+        """
+        Justpy ajax handler
+        """
+    
+    @app.websocket_route("/")
+    class JustpyEvents(WebSocketEndpoint):
+
+        socket_id = 0
+        
+        async def on_connect(self, websocket):
+            await websocket.accept()
+            websocket.id = JustpyEvents.socket_id
+            websocket.open = True
+            logging.debug(f"Websocket {JustpyEvents.socket_id} connected")
+            JustpyEvents.socket_id += 1
+            # Send back socket_id to page
+            # await websocket.send_json({'type': 'websocket_update', 'data': websocket.id})
+            WebPage.loop.create_task(
+                websocket.send_json({"type": "websocket_update", "data": websocket.id})
+            )
+
+        async def on_receive(self, websocket, data):
+            """
+            Method to accept and act on data received from websocket
+            """
+            logging.debug("%s %s", f"Socket {websocket.id} data received:", data)
+            data_dict = json.loads(data)
+            msg_type = data_dict["type"]
+            # data_dict['event_data']['type'] = msg_type
+            if msg_type == "connect":
+                # Initial message sent from browser after connection is established
+                # WebPage.sockets is a dictionary of dictionaries
+                # First dictionary key is page id
+                # Second dictionary key is socket id
+                page_key = data_dict["page_id"]
+                websocket.page_id = page_key
+                if page_key in WebPage.sockets:
+                    WebPage.sockets[page_key][websocket.id] = websocket
+                else:
+                    WebPage.sockets[page_key] = {websocket.id: websocket}
+                return
+            if msg_type == "event" or msg_type == "page_event":
+                # Message sent when an event occurs in the browser
+                session_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
+                if jpconfig.SESSIONS and session_cookie:
+                    session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
+                    data_dict["event_data"]["session_id"] = session_id
+                # await self._event(data_dict)
+                data_dict["event_data"]["msg_type"] = msg_type
+                page_event = True if msg_type == "page_event" else False
+                WebPage.loop.create_task(
+                    handle_event(data_dict, com_type=0, page_event=page_event)
+                )
+                return
+            if msg_type == "zzz_page_event":
+                # Message sent when an event occurs in the browser
+                session_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
+                if jpconfig.SESSIONS and session_cookie:
+                    session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
+                    data_dict["event_data"]["session_id"] = session_id
+                data_dict["event_data"]["msg_type"] = msg_type
+                WebPage.loop.create_task(
+                    handle_event(data_dict, com_type=0, page_event=True)
+                )
+                return
+
+        async def on_disconnect(self, websocket, close_code):
+            
+            try:
+                pid = websocket.page_id
+            except:
+                return
+            websocket.open = False
+            WebPage.sockets[pid].pop(websocket.id)
+            if not WebPage.sockets[pid]:
+                WebPage.sockets.pop(pid)
+            await WebPage.instances[pid].on_disconnect(
+                websocket
+            )  # Run the specific page disconnect function
+            if jpconfig.MEMORY_DEBUG:
+                print("************************")
+                print(
+                    "Elements: ",
+                    len(JustpyBaseComponent.instances),
+                    JustpyBaseComponent.instances,
+                )
+                print("WebPages: ", len(WebPage.instances), WebPage.instances)
+                print("Sockets: ", len(WebPage.sockets), WebPage.sockets)
+                import psutil
+                process = psutil.Process(os.getpid())
+                print(f"Memory used: {process.memory_info().rss:,}")
+                print("************************")
+
+    return app
 
 def initial_func(_request):
     """
@@ -77,114 +191,6 @@ def server_error_func(request):
     )
     return wp
 
-@app.on_event("startup")
-async def justpy_startup():
-    WebPage.loop = asyncio.get_event_loop()
-    JustPy.loop = WebPage.loop
-    JustPy.STATIC_DIRECTORY = jpconfig.STATIC_DIRECTORY
-
-    if startup_func:
-        if inspect.iscoroutinefunction(startup_func):
-            await startup_func()
-        else:
-            startup_func()
-    protocol = "https" if jpconfig.SSL_KEYFILE else "http"
-    print(f"JustPy ready to go on {protocol}://{jpconfig.HOST}:{jpconfig.PORT}")
-
-    
-@app.route("/zzz_justpy_ajax")
-class AjaxEndpoint(JustpyAjaxEndpoint):
-    """
-    Justpy ajax handler
-    """
-    
-@app.websocket_route("/")
-class JustpyEvents(WebSocketEndpoint):
-
-    socket_id = 0
-
-    async def on_connect(self, websocket):
-        await websocket.accept()
-        websocket.id = JustpyEvents.socket_id
-        websocket.open = True
-        logging.debug(f"Websocket {JustpyEvents.socket_id} connected")
-        JustpyEvents.socket_id += 1
-        # Send back socket_id to page
-        # await websocket.send_json({'type': 'websocket_update', 'data': websocket.id})
-        WebPage.loop.create_task(
-            websocket.send_json({"type": "websocket_update", "data": websocket.id})
-        )
-
-    async def on_receive(self, websocket, data):
-        """
-        Method to accept and act on data received from websocket
-        """
-        logging.debug("%s %s", f"Socket {websocket.id} data received:", data)
-        data_dict = json.loads(data)
-        msg_type = data_dict["type"]
-        # data_dict['event_data']['type'] = msg_type
-        if msg_type == "connect":
-            # Initial message sent from browser after connection is established
-            # WebPage.sockets is a dictionary of dictionaries
-            # First dictionary key is page id
-            # Second dictionary key is socket id
-            page_key = data_dict["page_id"]
-            websocket.page_id = page_key
-            if page_key in WebPage.sockets:
-                WebPage.sockets[page_key][websocket.id] = websocket
-            else:
-                WebPage.sockets[page_key] = {websocket.id: websocket}
-            return
-        if msg_type == "event" or msg_type == "page_event":
-            # Message sent when an event occurs in the browser
-            session_cookie = websocket.cookies.get(jpconfig.SESSION_COOKIE_NAME)
-            if jpconfig.SESSIONS and session_cookie:
-                session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
-                data_dict["event_data"]["session_id"] = session_id
-            # await self._event(data_dict)
-            data_dict["event_data"]["msg_type"] = msg_type
-            page_event = True if msg_type == "page_event" else False
-            WebPage.loop.create_task(
-                handle_event(data_dict, com_type=0, page_event=page_event)
-            )
-            return
-        if msg_type == "zzz_page_event":
-            # Message sent when an event occurs in the browser
-            session_cookie = websocket.cookies.get(jpconfig.SESSION_COOKIE_NAME)
-            if jpconfig.SESSIONS and session_cookie:
-                session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
-                data_dict["event_data"]["session_id"] = session_id
-            data_dict["event_data"]["msg_type"] = msg_type
-            WebPage.loop.create_task(
-                handle_event(data_dict, com_type=0, page_event=True)
-            )
-            return
-
-    async def on_disconnect(self, websocket, close_code):
-        try:
-            pid = websocket.page_id
-        except:
-            return
-        websocket.open = False
-        WebPage.sockets[pid].pop(websocket.id)
-        if not WebPage.sockets[pid]:
-            WebPage.sockets.pop(pid)
-        await WebPage.instances[pid].on_disconnect(
-            websocket
-        )  # Run the specific page disconnect function
-        if jpconfig.MEMORY_DEBUG:
-            print("************************")
-            print(
-                "Elements: ",
-                len(JustpyBaseComponent.instances),
-                JustpyBaseComponent.instances,
-            )
-            print("WebPages: ", len(WebPage.instances), WebPage.instances)
-            print("Sockets: ", len(WebPage.sockets), WebPage.sockets)
-            import psutil
-            process = psutil.Process(os.getpid())
-            print(f"Memory used: {process.memory_info().rss:,}")
-            print("************************")
 
 def get_server():
     """
@@ -243,6 +249,7 @@ def justpy(
     if websockets:
         WebPage.use_websockets = True
     else:
+        print ("websockets turned to False")
         WebPage.use_websockets = False
     app.add_jproute("/", func_to_run)
     for k, v in kwargs.items():
