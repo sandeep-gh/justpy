@@ -45,8 +45,8 @@ class WebPage:
     def __init__(self, **kwargs):
         self.cache = None  # Set this attribute if you want to use the cache.
         self.use_cache = False  # Determines whether the page uses the cache or not
-        self.template_file = "tailwind.html"
-        self.title = kwargs.pop("title", "justpy")
+        self.template_file = "svelte.html"
+        self.title = kwargs.pop("title", "justpy-svelte")
         self.display_url = None
         self.redirect = None
         self.open = None

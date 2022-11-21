@@ -8,9 +8,10 @@ def color_demo(request):
     return wp
 
 def color_change(self, msg):
+    print ("color change called");
     self.d.style=f'color: {self.value}'
     self.d.text = f'The color of this text is: {self.value}'
 
 # initialize the demo
 from  examples.basedemo import Demo
-Demo ("color_demo",color_demo)
+Demo (color_demo)

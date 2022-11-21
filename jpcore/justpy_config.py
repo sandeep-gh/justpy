@@ -81,7 +81,7 @@ class JpConfig(Config):
             jpconfig.TAILWIND = config("TAILWIND", cast=bool, default=True)
             jpconfig.QUASAR = config("QUASAR", cast=bool, default=False)
             jpconfig.QUASAR_VERSION = config("QUASAR_VERSION", cast=str, default=None)
-            jpconfig.HIGHCHARTS = config("HIGHCHARTS", cast=bool, default=True)
+            jpconfig.HIGHCHARTS = config("HIGHCHARTS", cast=bool, default=False)
             jpconfig.KATEX = config("KATEX", cast=bool, default=False)
             jpconfig.VEGA = config("VEGA", cast=bool, default=False)
             jpconfig.BOKEH = config("BOKEH", cast=bool, default=False)
@@ -90,7 +90,7 @@ class JpConfig(Config):
             jpconfig.AGGRID = config("AGGRID", cast=bool, default=True)
             jpconfig.AGGRID_ENTERPRISE= config("AGGRID_ENTERPRISE", cast=bool, default=False)
             jpconfig.NO_INTERNET= config("NO_INTERNET", cast=bool, default=True)
-            jpconfig.FRONTEND_ENGINE_TYPE = config("FRONTEND_ENGINE_TYPE", cast=str, default="vue")
+            jpconfig.FRONTEND_ENGINE_TYPE = config("FRONTEND_ENGINE_TYPE", cast=str, default="svelte")
 
 
 if Compatibility.version is None:

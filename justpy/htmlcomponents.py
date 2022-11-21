@@ -203,6 +203,24 @@ class JustpyBaseComponent(Component):
     def has_class(self, class_name):
         return class_name in self.classes.split()
 
+    def set_class(self, class_name):
+        """
+        this function is only provided to support justpy codes.
+        The implementation is incorrect and will not work in all scenarios
+        For ofjustpy codes use add_twsty_tags
+        """
+        self.classes = self.classes + " " + class_name
+
+    def set_classes(self, class_list):
+        """
+        this function is only provided to support justpy codes.
+        The implementation is incorrect. 
+        For ofjustpy codes use add_twsty_tags
+        """
+        self.classes = self.classes + " " + class_list
+
+        
+        
     def remove_class(self, *args):
         for _ in args:
             self.twsty_tags.remove(_)

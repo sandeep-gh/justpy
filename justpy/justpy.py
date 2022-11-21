@@ -18,7 +18,7 @@ from jpcore.justpy_config import JpConfig
 JustPy.LOGGING_LEVEL = jpconfig.LOGGING_LEVEL
 # from .misccomponents import *
 from .pandas import *
-from .routing import SetRoute
+
 from jpcore.utilities import run_task, create_delayed_task
 import uvicorn, logging, sys, os, traceback
 import typing
@@ -35,7 +35,7 @@ if jpconfig.VERBOSE:
 
 logging.basicConfig(level=jpconfig.LOGGING_LEVEL, format="%(levelname)s %(module)s: %(message)s")
 
-def build_app(middlewares=None, APPCLASS = JustpyApp):
+def build_app(middlewares=None, APPCLASS = JustpyApp, startup_func = None):
     if not middlewares:
         middlewares = []
     middlewares.append(Middleware(GZipMiddleware))
@@ -46,7 +46,7 @@ def build_app(middlewares=None, APPCLASS = JustpyApp):
     # implement https://github.com/justpy-org/justpy/issues/535
     #if SESSIONS:
     #    middleware.append(Middleware(SessionMiddleware, secret_key=SECRET_KEY))
-    app = APPCLASS(middleware=middlewares, debug=DEBUG)
+    app = APPCLASS(middleware=middlewares, debug=jpconfig.DEBUG)
     assert app is not None
     app.mount(jpconfig.STATIC_ROUTE, StaticFiles(directory=jpconfig.STATIC_DIRECTORY), name=jpconfig.STATIC_NAME)
     app.mount(
@@ -65,7 +65,7 @@ def build_app(middlewares=None, APPCLASS = JustpyApp):
             else:
                 startup_func()
         protocol = "https" if jpconfig.SSL_KEYFILE else "http"
-        print(f"JustPy ready to go on {protocol}://{HOST}:{PORT}")
+        print(f"JustPy ready to go on {protocol}://{jpconfig.HOST}:{jpconfig.PORT}")
 
     
     @app.route("/zzz_justpy_ajax")
@@ -113,7 +113,7 @@ def build_app(middlewares=None, APPCLASS = JustpyApp):
                 return
             if msg_type == "event" or msg_type == "page_event":
                 # Message sent when an event occurs in the browser
-                session_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
+                session_cookie = websocket.cookies.get(jpconfig.SESSION_COOKIE_NAME)
                 if jpconfig.SESSIONS and session_cookie:
                     session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
                     data_dict["event_data"]["session_id"] = session_id
@@ -126,7 +126,7 @@ def build_app(middlewares=None, APPCLASS = JustpyApp):
                 return
             if msg_type == "zzz_page_event":
                 # Message sent when an event occurs in the browser
-                session_cookie = websocket.cookies.get(SESSION_COOKIE_NAME)
+                session_cookie = websocket.cookies.get(jpconfig.SESSION_COOKIE_NAME)
                 if jpconfig.SESSIONS and session_cookie:
                     session_id = cookie_signer.unsign(session_cookie).decode("utf-8")
                     data_dict["event_data"]["session_id"] = session_id
@@ -179,7 +179,7 @@ def initial_func(_request):
 
 
 func_to_run = initial_func
-startup_func = None
+
 
 
 def server_error_func(request):
@@ -209,73 +209,35 @@ def Route(path:str,wpfunc:typing.Callable):
     app.add_jproute(path,wpfunc)
 
 
-def justpy(
-    func=None,
-    *,
-    start_server: bool = True,
-    websockets: bool = True,
-    host: str = jpconfig.HOST,
-    port: int = jpconfig.PORT,
-    startup=None,
-    init_server: bool = True,
-    **kwargs,
+# jp.justpy entry point is deprecated now.
+# use uvicorn from command line
+def launch_uvicorn_webserver(
+        app,
+        host: str = jpconfig.HOST,
+        port: int = jpconfig.PORT,
+
 ):
     """
-
-    The main justpy entry point
-
-    Args:
-        func: the callback to get the webpage
-        start_server(bool): if True start the server
-        websockets(bool): if True use websockets
-        host(str): the host to start from e.g. localhost or 0.0.0.0 to listen on all interfaces
-        port(int): the port to use for listening
-        startup: a callback for the startup phase
-        init_server(bool): if True construct the server
-        kwargs: further keyword arguments
-
     """
-    global jp_server, func_to_run, startup_func, HOST, PORT
-    jpconfig.HOST = host
-    jpconfig.PORT = port
-    HOST = host
-    PORT = port
-    if func:
-        func_to_run = func
+   
+    if jpconfig.SSL_KEYFILE and jpconfig.SSL_CERTFILE:
+        uvicorn_config = uvicorn.config.Config(
+            app,
+            host=host,
+            port=port,
+            log_level=jpconfig.UVICORN_LOGGING_LEVEL,
+            proxy_headers=True,
+            ssl_keyfile=jpconfig.SSL_KEYFILE,
+            ssl_certfile=jpconfig.SSL_CERTFILE,
+            ssl_version=jpconfig.SSL_VERSION,
+        )
     else:
-        func_to_run = initial_func
-    if startup:
-        startup_func = startup
-    if websockets:
-        WebPage.use_websockets = True
-    else:
-        print ("websockets turned to False")
-        WebPage.use_websockets = False
-    app.add_jproute("/", func_to_run)
-    for k, v in kwargs.items():
-        template_options[k.lower()] = v
+        uvicorn_config = uvicorn.config.Config(
+            app, host=host, port=port, log_level=jpconfig.UVICORN_LOGGING_LEVEL
+        )
+    jp_server = uvicorn.Server(uvicorn_config)
+    jp_server.run()
 
-    if init_server:
-        if jpconfig.SSL_KEYFILE and jpconfig.SSL_CERTFILE:
-            uvicorn_config = uvicorn.config.Config(
-                app,
-                host=host,
-                port=port,
-                log_level=jpconfig.UVICORN_LOGGING_LEVEL,
-                proxy_headers=True,
-                ssl_keyfile=jpconfig.SSL_KEYFILE,
-                ssl_certfile=jpconfig.SSL_CERTFILE,
-                ssl_version=jpconfig.SSL_VERSION,
-            )
-        else:
-            uvicorn_config = uvicorn.config.Config(
-                app, host=host, port=port, log_level=jpconfig.UVICORN_LOGGING_LEVEL
-            )
-        jp_server = uvicorn.Server(uvicorn_config)
-        if start_server:
-            jp_server.run()
-
-    return func_to_run
 
 
 def convert_dict_to_object(d):
