@@ -8,7 +8,6 @@ def color_demo(request):
     return wp
 
 def color_change(self, msg):
-    print ("color change called");
     self.d.style=f'color: {self.value}'
     self.d.text = f'The color of this text is: {self.value}'
 
